@@ -15,8 +15,22 @@ export const Layout: FC = (props) => {
                     href="/static/pico.classless.slate.min.css"
                 />
             </head>
+            <header>
+                <nav>
+                    <ul>
+                        <li>
+                            <a href="/">Home</a>
+                        </li>
+                        <li>
+                            <a href="/api">API</a>
+                        </li>
+                    </ul>
+                </nav>
+            </header>
             <body>
-                <main>{props.children}</main>
+                <main style="display: flex; height:80vh; align-items: center; justify-content: center;">
+                    {props.children}
+                </main>
             </body>
         </html>
     );
