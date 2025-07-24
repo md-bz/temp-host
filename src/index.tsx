@@ -26,6 +26,15 @@ app.on("GET", ["/", "/file"], (c) => {
                             placeholder="10,10s,10m,10h,10d"
                         />
                     </label>
+                    <label>
+                        How many times can the link be downloaded
+                        <input
+                            type="number"
+                            name="downloadCount"
+                            defaultValue="100"
+                            placeholder="100"
+                        />
+                    </label>
                     <input type="file" name="file" />
 
                     <button type="submit">Upload</button>

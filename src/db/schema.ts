@@ -16,6 +16,7 @@ export const files = sqliteTable("files", {
         .default(sql`(strftime('%s','now'))`), // UNIX timestamp
     expiresAt: t.integer("expires_at").notNull(), // UNIX timestamp
     downloadCount: t.integer("download_count").notNull().default(0),
+    maxDownloadCount: t.integer("max_download_count").notNull().default(10000),
     password: t.text("password"),
     url: t.text("url").notNull(),
 });

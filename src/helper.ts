@@ -43,6 +43,10 @@ export function toUnixDate(
 
 const maxAge = toUnixDate(process.env.MAX_AGE || "1d");
 
+const maxDownloadCount = process.env.MAX_DOWNLOAD_COUNT
+    ? Number(process.env.MAX_DOWNLOAD_COUNT)
+    : 10000;
+
 export class HttpError extends Error {
     status: ContentfulStatusCode;
 
@@ -54,6 +58,7 @@ export class HttpError extends Error {
 
 export async function saveFile(body: { [key: string]: string | File }) {
     const file = body["file"] as File;
+    const downloadCount = body["downloadCount"] as string;
     const age = body["age"] as string;
 
     if (!file) {
@@ -75,6 +80,10 @@ export async function saveFile(body: { [key: string]: string | File }) {
         filename: file.name,
         size: file.size,
         expiresAt: Date.now() + Math.min(maxAge, toUnixDate(age, Infinity)),
+        maxDownloadCount: Math.min(
+            maxDownloadCount,
+            downloadCount ? Number(downloadCount) : Infinity
+        ),
         url,
         storagePath: storagePath,
     });
@@ -85,8 +94,12 @@ export async function saveFile(body: { [key: string]: string | File }) {
 export async function getFile(id: string) {
     const file = await db.select().from(files).where(eq(files.url, id)).get();
 
-    if (!file || file.expiresAt < Date.now()) {
-        throw new HttpError("file not found", 404);
+    if (
+        !file ||
+        file.expiresAt < Date.now() ||
+        file.downloadCount >= file.maxDownloadCount
+    ) {
+        throw new HttpError("file not found or expired", 404);
     }
 
     let data;
@@ -96,6 +109,11 @@ export async function getFile(id: string) {
         console.log(error);
         throw new HttpError("something went wrong", 500);
     }
+
+    await db
+        .update(files)
+        .set({ downloadCount: file.downloadCount + 1 })
+        .where(eq(files.id, file.id));
 
     return { data, filename: file.filename };
 }
