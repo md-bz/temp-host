@@ -3,6 +3,7 @@ import { api } from "./api";
 import { Layout } from "./components/Layout";
 import { serveStatic } from "hono/bun";
 import { getFile, HttpError, saveFile } from "./helper";
+import {} from "./cron";
 
 const app = new Hono();
 
