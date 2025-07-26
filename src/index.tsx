@@ -2,7 +2,9 @@ import { Hono } from "hono";
 import { api } from "./api";
 import { Layout } from "./components/Layout";
 import { serveStatic } from "hono/bun";
-import { getFile, HttpError, saveFile } from "./helper";
+import { getFileInfo, HttpError, saveFile } from "./helper";
+//@ts-ignore
+import { formatDatetime } from "../static/helper";
 import {} from "./cron";
 
 const app = new Hono();
@@ -78,14 +80,36 @@ app.post("/file", async (c) => {
 
 app.get("/file/:id", async (c) => {
     const id = c.req.param("id");
-    console.log(id);
 
     try {
-        const { data, filename } = await getFile(id);
-        return c.body(data, 200, {
-            "Content-Type": "application/octet-stream",
-            "Content-Disposition": `attachment; filename="${filename}"`,
-        });
+        const { filename, downloadCount, maxDownloadCount, expiresAt } =
+            await getFileInfo(id);
+
+        return c.html(
+            <Layout>
+                <article>
+                    <header>
+                        <h4>filename: {filename}</h4>
+                    </header>
+                    <p>Download count: {downloadCount}</p>
+                    <p>Max download count: {maxDownloadCount}</p>
+                    <p>
+                        Expires at:{" "}
+                        <span id="expires-at" data-time={expiresAt}>
+                            {/* this will be replaced by client local time if js isn't blocked */}
+                            {formatDatetime(expiresAt)}
+                        </span>
+                    </p>
+                    <footer>
+                        <a href={`/api/file/${id}`}>Download</a>
+                    </footer>
+                    <script
+                        src="/static/clientTimestamp.js"
+                        type="module"
+                    ></script>
+                </article>
+            </Layout>
+        );
     } catch (error) {
         if (error instanceof HttpError) {
             return c.html(

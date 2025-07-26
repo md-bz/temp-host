@@ -90,8 +90,7 @@ export async function saveFile(body: { [key: string]: string | File }) {
 
     return url;
 }
-
-export async function getFile(id: string) {
+export async function getFileInfo(id: string) {
     const file = await db.select().from(files).where(eq(files.url, id)).get();
 
     if (
@@ -101,7 +100,11 @@ export async function getFile(id: string) {
     ) {
         throw new HttpError("file not found or expired", 404);
     }
+    return file;
+}
 
+export async function getFile(id: string) {
+    const file = await getFileInfo(id);
     let data;
     try {
         data = await fs.readFile(file.storagePath);
@@ -115,5 +118,5 @@ export async function getFile(id: string) {
         .set({ downloadCount: file.downloadCount + 1 })
         .where(eq(files.id, file.id));
 
-    return { data, filename: file.filename };
+    return { data, ...file };
 }
