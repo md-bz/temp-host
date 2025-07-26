@@ -38,6 +38,10 @@ export function toUnixDate(
         return value * 60 * 1000;
     }
 
+    if (unit === "s") {
+        return value * 1000;
+    }
+
     return defaultTime;
 }
 
