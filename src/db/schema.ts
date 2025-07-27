@@ -20,3 +20,11 @@ export const files = sqliteTable("files", {
     password: t.text("password"),
     url: t.text("url").notNull(),
 });
+
+export const users = t.sqliteTable("users", {
+    id: t.int().primaryKey({ autoIncrement: true }),
+    name: t.text("name").notNull(),
+    email: t.text("email").notNull().unique(),
+    password: t.text("password").notNull(),
+    createdAt: t.integer("created_at").default(sql`(strftime('%s','now'))`),
+});

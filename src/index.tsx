@@ -7,6 +7,7 @@ import { getFileInfo, HttpError, saveFile } from "./helper";
 import { formatDatetime } from "../static/helper";
 import {} from "./cron";
 import { ContentfulStatusCode } from "hono/utils/http-status";
+import { authRouter, htmlAuth, jwtSecret } from "./auth";
 
 const app = new Hono();
 
@@ -18,6 +19,8 @@ declare module "hono" {
     }
 }
 
+app.route("/api", api);
+
 app.use(async (c, next) => {
     c.setRenderer((content, status) => {
         return c.html(<Layout>{content}</Layout>, status);
@@ -25,9 +28,12 @@ app.use(async (c, next) => {
     await next();
 });
 
+// this is placed here to inherit the layout app router
+app.route("/auth", authRouter);
+
 app.use("/static/*", serveStatic({ root: "./" }));
 
-app.on("GET", ["/", "/file"], (c) => {
+app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
     return c.render(
         <article>
             <form action="/file" method="post" enctype="multipart/form-data">
@@ -57,7 +63,7 @@ app.on("GET", ["/", "/file"], (c) => {
     );
 });
 
-app.post("/file", async (c) => {
+app.post("/file", htmlAuth, async (c) => {
     const body = await c.req.parseBody();
     try {
         const url = await saveFile(body);
@@ -110,7 +116,5 @@ app.get("/file/:id", async (c) => {
         return c.render(<p>Something went wrong</p>, 500);
     }
 });
-
-app.route("/api", api);
 
 export default app;

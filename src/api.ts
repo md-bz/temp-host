@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { getFile, HttpError, saveFile } from "./helper";
+import { jsonAuth } from "./auth";
 
 export const api = new Hono();
 
-api.post("/file", async (c) => {
+api.post("/file", jsonAuth, async (c) => {
     const body = await c.req.parseBody();
 
     try {
