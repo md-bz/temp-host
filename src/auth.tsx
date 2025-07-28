@@ -3,15 +3,18 @@ import { jwt, sign, verify } from "hono/jwt";
 import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { db } from "./db/db";
-import { users } from "./db/schema";
+import { captchas, users } from "./db/schema";
 import { setCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
+import { generateCaptcha } from "./captcha";
 
 export const authRouter = new Hono();
 
 // Signup form
-authRouter.get("/signup", (c) =>
-    c.render(
+authRouter.get("/signup", async (c) => {
+    const { id, buffer } = await generateCaptcha();
+
+    return c.render(
         <article>
             <form action="/auth/signup" method="post">
                 <label>
@@ -23,16 +26,49 @@ authRouter.get("/signup", (c) =>
                 <label>
                     Password <input type="password" name="password" />
                 </label>
+                <input type="hidden" name="captchaId" value={id} />
+                <img
+                    src={`data:image/png;base64,${buffer.toString("base64")}`}
+                    alt="captcha"
+                />
+                <label>
+                    Enter Captcha <input type="text" name="captchaText" />
+                </label>
                 <button type="submit">Signup</button>
             </form>
         </article>
-    )
-);
+    );
+});
 
 // Signup handler
 authRouter.post("/signup", async (c) => {
     const body = await c.req.parseBody();
-    const { name, email, password } = body as Record<string, string>;
+    const { name, email, password, captchaId, captchaText } = body as Record<
+        string,
+        string
+    >;
+
+    // Validate captcha
+    const captcha = await db
+        .select()
+        .from(captchas)
+        .where(eq(captchas.id, captchaId))
+        .get();
+    if (
+        !captcha ||
+        captcha.text.toLowerCase() !== captchaText.toLowerCase() ||
+        captcha.expiry < Date.now()
+    ) {
+        return c.render(
+            <article>
+                <h2>Invalid or expired captcha</h2>
+                <a href="/auth/signup">Try again</a>
+            </article>,
+            400
+        );
+    }
+    // Remove used captcha
+    await db.delete(captchas).where(eq(captchas.id, captchaId));
 
     const existingUser = await db
         .select()
@@ -63,8 +99,10 @@ authRouter.post("/signup", async (c) => {
 });
 
 // Login form
-authRouter.get("/login", (c) =>
-    c.render(
+authRouter.get("/login", async (c) => {
+    const { id, buffer } = await generateCaptcha();
+
+    return c.render(
         <article>
             <form action="/auth/login" method="post">
                 <label>
@@ -73,11 +111,19 @@ authRouter.get("/login", (c) =>
                 <label>
                     Password <input type="password" name="password" />
                 </label>
+                <input type="hidden" name="captchaId" value={id} />
+                <img
+                    src={`data:image/png;base64,${buffer.toString("base64")}`}
+                    alt="captcha"
+                />
+                <label>
+                    Enter Captcha <input type="text" name="captchaText" />
+                </label>
                 <button type="submit">Login</button>
             </form>
         </article>
-    )
-);
+    );
+});
 
 if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET is not set");
@@ -87,26 +133,38 @@ export const jwtSecret = process.env.JWT_SECRET;
 // Login handler
 authRouter.post("/login", async (c) => {
     const body = await c.req.parseBody();
-    const { email, password } = body as Record<string, string>;
+    const { email, password, captchaId, captchaText } = body as Record<
+        string,
+        string
+    >;
+
+    // Validate captcha
+    const captcha = await db
+        .select()
+        .from(captchas)
+        .where(eq(captchas.id, captchaId))
+        .get();
+    if (
+        !captcha ||
+        captcha.text.toLowerCase() !== captchaText.toLowerCase() ||
+        captcha.expiry < Date.now()
+    ) {
+        return c.render(
+            <article>
+                <h2>Invalid or expired captcha</h2>
+                <a href="/auth/login">Try again</a>
+            </article>,
+            400
+        );
+    }
+    await db.delete(captchas).where(eq(captchas.id, captchaId));
 
     const user = await db
         .select()
         .from(users)
         .where(eq(users.email, email))
         .get();
-
-    if (!user) {
-        return c.render(
-            <article>
-                <h2>Invalid email or password</h2>
-                <a href="/auth/login">Try again</a>
-            </article>,
-            401
-        );
-    }
-
-    const match = await argon2.verify(user.password, password);
-    if (!match) {
+    if (!user || !(await argon2.verify(user.password, password))) {
         return c.render(
             <article>
                 <h2>Invalid email or password</h2>

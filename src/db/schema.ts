@@ -28,3 +28,9 @@ export const users = t.sqliteTable("users", {
     password: t.text("password").notNull(),
     createdAt: t.integer("created_at").default(sql`(strftime('%s','now'))`),
 });
+
+export const captchas = t.sqliteTable("captchas", {
+    id: t.text("id").primaryKey(),
+    text: t.text("text").notNull(),
+    expiry: t.integer("expiry").notNull(),
+});
