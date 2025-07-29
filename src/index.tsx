@@ -8,6 +8,7 @@ import { formatDatetime } from "../static/helper";
 import {} from "./cron";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { authRouter, htmlAuth, jwtSecret } from "./auth";
+import { limiter } from "./ratelimter";
 
 const app = new Hono();
 
@@ -63,7 +64,7 @@ app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
     );
 });
 
-app.post("/file", htmlAuth, async (c) => {
+app.post("/file", htmlAuth, limiter(), async (c) => {
     const body = await c.req.parseBody();
     try {
         const url = await saveFile(body);

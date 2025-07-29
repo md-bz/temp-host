@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { getFile, HttpError, saveFile } from "./helper";
 import { jsonAuth } from "./auth";
+import { limiter } from "./ratelimter";
 
 export const api = new Hono();
 
-api.post("/file", jsonAuth, async (c) => {
+api.post("/file", jsonAuth, limiter("json"), async (c) => {
     const body = await c.req.parseBody();
 
     try {
