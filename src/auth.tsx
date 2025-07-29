@@ -3,10 +3,10 @@ import { jwt, sign, verify } from "hono/jwt";
 import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { db } from "./db/db";
-import { captchas, users } from "./db/schema";
+import { users } from "./db/schema";
 import { setCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
-import { generateCaptcha } from "./captcha";
+import { generateCaptcha, isCaptchaValid } from "./captcha";
 
 export const authRouter = new Hono();
 
@@ -48,17 +48,8 @@ authRouter.post("/signup", async (c) => {
         string
     >;
 
-    // Validate captcha
-    const captcha = await db
-        .select()
-        .from(captchas)
-        .where(eq(captchas.id, captchaId))
-        .get();
-    if (
-        !captcha ||
-        captcha.text.toLowerCase() !== captchaText.toLowerCase() ||
-        captcha.expiry < Date.now()
-    ) {
+    const isValid = await isCaptchaValid(captchaId, captchaText);
+    if (!isValid) {
         return c.render(
             <article>
                 <h2>Invalid or expired captcha</h2>
@@ -67,8 +58,6 @@ authRouter.post("/signup", async (c) => {
             400
         );
     }
-    // Remove used captcha
-    await db.delete(captchas).where(eq(captchas.id, captchaId));
 
     const existingUser = await db
         .select()
@@ -138,17 +127,8 @@ authRouter.post("/login", async (c) => {
         string
     >;
 
-    // Validate captcha
-    const captcha = await db
-        .select()
-        .from(captchas)
-        .where(eq(captchas.id, captchaId))
-        .get();
-    if (
-        !captcha ||
-        captcha.text.toLowerCase() !== captchaText.toLowerCase() ||
-        captcha.expiry < Date.now()
-    ) {
+    const isValid = await isCaptchaValid(captchaId, captchaText);
+    if (!isValid) {
         return c.render(
             <article>
                 <h2>Invalid or expired captcha</h2>
@@ -157,7 +137,6 @@ authRouter.post("/login", async (c) => {
             400
         );
     }
-    await db.delete(captchas).where(eq(captchas.id, captchaId));
 
     const user = await db
         .select()
