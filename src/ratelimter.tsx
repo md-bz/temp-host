@@ -1,14 +1,8 @@
 import RedisStore, { RedisReply } from "rate-limit-redis";
-import RedisClient from "ioredis";
 import { rateLimiter, Store } from "hono-rate-limiter";
 import { toUnixDate } from "./helper";
 import { createMiddleware } from "hono/factory";
-
-if (!process.env.REDIS_URL) {
-    throw new Error("REDIS_URL environment variable is not set");
-}
-
-const redisClient = new RedisClient(process.env.REDIS_URL);
+import { redisClient } from "./db/redis";
 
 const store = new RedisStore({
     sendCommand: (...args) => {
