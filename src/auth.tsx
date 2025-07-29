@@ -193,7 +193,7 @@ authRouter.post("/login", async (c) => {
 const skipAuth = process.env.SKIP_AUTH === "true";
 
 export const htmlAuth = createMiddleware(async (c, next) => {
-    if (skipAuth) await next();
+    if (skipAuth) return await next();
 
     const token = c.req
         .header("Cookie")
@@ -221,7 +221,7 @@ export const htmlAuth = createMiddleware(async (c, next) => {
 });
 
 export const jsonAuth = createMiddleware(async (c, next) => {
-    if (skipAuth) await next();
+    if (skipAuth) return await next();
 
     const token = c.req.header("Authorization")?.split("Bearer ")[1];
 
