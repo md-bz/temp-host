@@ -7,12 +7,13 @@ import { ContentfulStatusCode } from "hono/utils/http-status";
 import { eq } from "drizzle-orm";
 
 export function toUnixDate(
-    input: string | number,
+    input?: string | number,
     defaultTime: number = 0
 ): number {
     if (typeof input === "number") {
         return input;
     }
+    if (!input) return defaultTime;
 
     if (/^\d+$/.test(input)) {
         return parseInt(input, 10);

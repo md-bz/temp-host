@@ -12,6 +12,7 @@ api.post("/file", jsonAuth, limiter("json"), async (c) => {
         const url = await saveFile(body);
         return c.json({ url });
     } catch (error) {
+        console.error(error);
         if (error instanceof HttpError) {
             return c.json({ error: error.message }, error.status);
         }
@@ -29,6 +30,7 @@ api.get("/file/:id", async (c) => {
             "Content-Disposition": `attachment; filename="${filename}"`,
         });
     } catch (error) {
+        console.error(error);
         if (error instanceof HttpError) {
             return c.json({ error: error.message }, error.status);
         }

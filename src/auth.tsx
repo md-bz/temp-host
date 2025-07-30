@@ -16,6 +16,9 @@ authRouter.get("/signup", async (c) => {
 
     return c.render(
         <article>
+            <header style="text-align:center">
+                <h4>Welcome, signup</h4>
+            </header>
             <form action="/auth/signup" method="post">
                 <label>
                     Name <input type="text" name="name" />
@@ -36,6 +39,11 @@ authRouter.get("/signup", async (c) => {
                 </label>
                 <button type="submit">Signup</button>
             </form>
+            <div style="text-align:center">
+                <small>
+                    already have an account? <a href="/auth/login">login</a>
+                </small>
+            </div>
         </article>
     );
 });
@@ -93,6 +101,9 @@ authRouter.get("/login", async (c) => {
 
     return c.render(
         <article>
+            <header style="text-align:center">
+                <h4>Welcome back, Login</h4>
+            </header>
             <form action="/auth/login" method="post">
                 <label>
                     Email <input type="email" name="email" />
@@ -110,6 +121,11 @@ authRouter.get("/login", async (c) => {
                 </label>
                 <button type="submit">Login</button>
             </form>
+            <div style="text-align:center">
+                <small>
+                    don't have an account? <a href="/auth/signup">signup</a>
+                </small>
+            </div>
         </article>
     );
 });
@@ -181,19 +197,14 @@ export const htmlAuth = createMiddleware(async (c, next) => {
         ?.split("=")[1];
 
     if (!token) {
-        return c.render(<h2>You need to login first</h2>, 401);
+        return c.redirect("/auth/login", 302);
     }
 
     try {
         const res = await verify(token, jwtSecret);
         c.set("jwtPayload", res);
     } catch (error) {
-        return c.render(
-            <h3>
-                Invalid token, <a href="/auth/login">login again</a>
-            </h3>,
-            401
-        );
+        return c.redirect("/auth/login", 302);
     }
 
     await next();
