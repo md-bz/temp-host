@@ -1,7 +1,9 @@
 {
     "name": "temp-host",
     "scripts": {
-        "dev": "bun run --hot src/index.tsx"
+        "dev": "bun run --hot src/index.tsx",
+        "build": "bun build src/index.tsx --outdir ./dist --target bun",
+        "prod": "bun run dist/index.js"
     },
     "dependencies": {
         "@libsql/client": "^0.15.10",
