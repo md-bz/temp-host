@@ -34,6 +34,43 @@ app.route("/auth", authRouter);
 
 app.use("/static/*", serveStatic({ root: "./" }));
 
+// Api docs
+app.get("/api", htmlAuth, async (c) => {
+    const token = c.req
+        .header("Cookie")
+        ?.split(";")
+        .find((x) => x.startsWith("token="))
+        ?.split("=")[1];
+
+    const url = new URL(c.req.url).origin;
+
+    return c.render(
+        <article>
+            <h2>API</h2>
+            <p>you need to set Authorization header with Bearer token:</p>
+            <p>Authorization: Bearer {token}</p>
+            <h3>API routes:</h3>
+            <ul>
+                <li>
+                    <p>POST /api/file</p>
+                    <p>needs Auth, is rate limited</p>
+                    <p>can use age as part of form data for expiration</p>
+                    <code>
+                        curl -X POST "{url}/api/file" --header "Content-Type:
+                        multipart/form-data" --header "Authorization: Bearer{" "}
+                        {token}" --form "file=@/path/to/file" --form "age=1d"
+                    </code>
+                </li>
+                <li>
+                    <p>GET /api/file/:id</p>
+                    <p>no auth/rate limit</p>
+                    <code>wget --content-disposition {url}/api/file/id</code>
+                </li>
+            </ul>
+        </article>
+    );
+});
+
 app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
     return c.render(
         <article>
