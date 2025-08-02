@@ -4,7 +4,7 @@ import { files } from "./db/schema";
 import { gte, lte, or } from "drizzle-orm";
 import * as fs from "fs/promises";
 
-const job = new CronJob(
+new CronJob(
     "0 0 5 * * *", // 5:00:00 am
     async function () {
         const cleaned = await db

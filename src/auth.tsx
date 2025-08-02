@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { jwt, sign, verify } from "hono/jwt";
+import { sign, verify } from "hono/jwt";
 import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { db } from "./db/db";
@@ -21,13 +21,13 @@ authRouter.get("/signup", async (c) => {
             </header>
             <form action="/auth/signup" method="post">
                 <label>
-                    Name <input type="text" name="name" />
+                    Name <input type="text" name="name" required />
                 </label>
                 <label>
-                    Email <input type="email" name="email" />
+                    Email <input type="email" name="email" required />
                 </label>
                 <label>
-                    Password <input type="password" name="password" />
+                    Password <input type="password" name="password" required />
                 </label>
                 <input type="hidden" name="captchaId" value={id} />
                 <img
@@ -35,7 +35,13 @@ authRouter.get("/signup", async (c) => {
                     alt="captcha"
                 />
                 <label>
-                    Enter Captcha <input type="text" name="captchaText" />
+                    Enter Captcha{" "}
+                    <input
+                        type="text"
+                        name="captchaText"
+                        required
+                        autoComplete="off"
+                    />
                 </label>
                 <button type="submit">Signup</button>
             </form>
@@ -106,10 +112,10 @@ authRouter.get("/login", async (c) => {
             </header>
             <form action="/auth/login" method="post">
                 <label>
-                    Email <input type="email" name="email" />
+                    Email <input type="email" name="email" required />
                 </label>
                 <label>
-                    Password <input type="password" name="password" />
+                    Password <input type="password" name="password" required />
                 </label>
                 <input type="hidden" name="captchaId" value={id} />
                 <img
@@ -117,7 +123,13 @@ authRouter.get("/login", async (c) => {
                     alt="captcha"
                 />
                 <label>
-                    Enter Captcha <input type="text" name="captchaText" />
+                    Enter Captcha{" "}
+                    <input
+                        type="text"
+                        name="captchaText"
+                        required
+                        autoComplete="off"
+                    />
                 </label>
                 <button type="submit">Login</button>
             </form>

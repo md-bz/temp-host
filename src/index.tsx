@@ -7,7 +7,7 @@ import { getFileInfo, HttpError, saveFile } from "./helper";
 import { formatDatetime } from "../static/helper";
 import {} from "./cron";
 import { ContentfulStatusCode } from "hono/utils/http-status";
-import { authRouter, htmlAuth, jwtSecret } from "./auth";
+import { authRouter, htmlAuth } from "./auth";
 import { limiter } from "./ratelimter";
 
 const app = new Hono();
@@ -93,7 +93,7 @@ app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
                         placeholder="100"
                     />
                 </label>
-                <input type="file" name="file" />
+                <input type="file" name="file" required />
 
                 <button type="submit">Upload</button>
             </form>

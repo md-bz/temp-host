@@ -13,7 +13,7 @@ const store = new RedisStore({
 
 export const limiter = (type: "json" | "html" = "html") =>
     process.env.RATE_LIMIT_SKIP === "true"
-        ? createMiddleware((c, next) => next())
+        ? createMiddleware((_, next) => next())
         : rateLimiter({
               windowMs: toUnixDate(process.env.RATE_LIMIT_WINDOW || "15m"),
               limit: process.env.RATE_LIMIT_COUNT
