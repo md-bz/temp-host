@@ -1,0 +1,21 @@
+services:
+    valkey:
+        image: valkey/valkey:latest
+        container_name: valkey
+        ports:
+            - "6379:6379"
+        volumes:
+            - ./valkey-data:/data
+
+    app:
+        build: .
+        image: temp-host:latest
+        container_name: bun-app
+        env_file: .env
+        volumes:
+            - ./sqlite-data:/usr/src/app/data
+            - ./files:/usr/src/app/files
+        ports:
+            - "3000:3000"
+        depends_on:
+            - valkey

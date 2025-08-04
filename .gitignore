@@ -2,7 +2,8 @@
 node_modules/
 
 #env 
-.env
+.env*
+!.env.example
 
 #db 
 db.sqlite
@@ -12,3 +13,7 @@ files/
 
 # build files
 dist/
+
+# datas
+valkey-data/
+sqlite-data/
