@@ -189,12 +189,7 @@ authRouter.post("/login", async (c) => {
         sameSite: "None",
         httpOnly: true,
     });
-    return c.render(
-        <article>
-            <h2>Login successful</h2>
-            <a href="/auth/me">Go to profile</a>
-        </article>
-    );
+    return c.redirect("/", 301);
 });
 
 const skipAuth = process.env.SKIP_AUTH === "true";
