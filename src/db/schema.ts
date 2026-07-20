@@ -21,6 +21,17 @@ export const files = sqliteTable("files", {
     url: t.text("url").notNull(),
 });
 
+export const texts = sqliteTable("texts", {
+    id: t.int().primaryKey({ autoIncrement: true }),
+    content: t.text("content").notNull(),
+    url: t.text("url").notNull().unique(),
+    createdAt: t
+        .integer("created_at")
+        .notNull()
+        .default(sql`(strftime('%s','now'))`),
+    expiresAt: t.integer("expires_at").notNull(),
+});
+
 export const users = t.sqliteTable("users", {
     id: t.int().primaryKey({ autoIncrement: true }),
     name: t.text("name").notNull(),

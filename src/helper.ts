@@ -1,7 +1,7 @@
 import * as fs from "fs/promises";
 import { nanoid } from "nanoid";
 import { db } from "./db/db";
-import { files } from "./db/schema";
+import { files, texts } from "./db/schema";
 import { join } from "path";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { eq } from "drizzle-orm";
@@ -52,6 +52,10 @@ const maxDownloadCount = process.env.MAX_DOWNLOAD_COUNT
     ? Number(process.env.MAX_DOWNLOAD_COUNT)
     : 10000;
 
+const maxFileSizeBytes = process.env.MAX_FILE_SIZE
+    ? Number(process.env.MAX_FILE_SIZE) * 1024 * 1024
+    : Infinity;
+
 export class HttpError extends Error {
     status: ContentfulStatusCode;
 
@@ -68,6 +72,10 @@ export async function saveFile(body: { [key: string]: string | File }) {
 
     if (!file) {
         throw new HttpError("no file sent", 400);
+    }
+
+    if (file.size > maxFileSizeBytes) {
+        throw new HttpError("file too large", 413);
     }
 
     const data = await file.bytes();
@@ -124,4 +132,33 @@ export async function getFile(id: string) {
         .where(eq(files.id, file.id));
 
     return { data, ...file };
+}
+
+export async function saveText(body: { [key: string]: string | File }) {
+    const content = body["content"] as string;
+    const age = body["age"] as string;
+
+    if (!content) {
+        throw new HttpError("no content sent", 400);
+    }
+
+    const url = nanoid();
+
+    await db.insert(texts).values({
+        content,
+        expiresAt: Date.now() + Math.min(maxAge, toUnixDate(age, Infinity)),
+        url,
+    });
+
+    return url;
+}
+
+export async function getText(id: string) {
+    const text = await db.select().from(texts).where(eq(texts.url, id)).get();
+
+    if (!text || text.expiresAt < Date.now()) {
+        throw new HttpError("text not found or expired", 404);
+    }
+
+    return text;
 }

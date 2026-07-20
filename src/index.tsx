@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { api } from "./api";
 import { Layout } from "./components/Layout";
 import { serveStatic } from "hono/bun";
-import { getFileInfo, HttpError, saveFile } from "./helper";
+import { getFileInfo, getText, HttpError, saveFile, saveText } from "./helper";
 //@ts-ignore
 import { formatDatetime } from "../static/helper";
 import {} from "./cron";
@@ -73,31 +73,54 @@ app.get("/api", htmlAuth, async (c) => {
 
 app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
     return c.render(
-        <article>
-            <form action="/file" method="post" enctype="multipart/form-data">
-                <label>
-                    How long link is Available
-                    <input
-                        type="text"
-                        name="age"
-                        defaultValue="1d"
-                        placeholder="10,10s,10m,10h,10d"
-                    />
-                </label>
-                <label>
-                    How many times can the link be downloaded
-                    <input
-                        type="number"
-                        name="downloadCount"
-                        defaultValue="100"
-                        placeholder="100"
-                    />
-                </label>
-                <input type="file" name="file" required />
+        <>
+            <article>
+                <form action="/file" method="post" enctype="multipart/form-data">
+                    <label>
+                        How long link is Available
+                        <input
+                            type="text"
+                            name="age"
+                            defaultValue="1d"
+                            placeholder="10,10s,10m,10h,10d"
+                        />
+                    </label>
+                    <label>
+                        How many times can the link be downloaded
+                        <input
+                            type="number"
+                            name="downloadCount"
+                            defaultValue="100"
+                            placeholder="100"
+                        />
+                    </label>
+                    <input type="file" name="file" required />
 
-                <button type="submit">Upload</button>
-            </form>
-        </article>
+                    <button type="submit">Upload</button>
+                </form>
+            </article>
+            <article>
+                <h4>Share text</h4>
+                <form action="/text" method="post">
+                    <label>
+                        How long link is Available
+                        <input
+                            type="text"
+                            name="age"
+                            defaultValue="1d"
+                            placeholder="10,10s,10m,10h,10d"
+                        />
+                    </label>
+                    <textarea
+                        name="content"
+                        required
+                        placeholder="Paste your text here..."
+                        style="min-height:200px"
+                    ></textarea>
+                    <button type="submit">Share Text</button>
+                </form>
+            </article>
+        </>
     );
 });
 
@@ -144,6 +167,52 @@ app.get("/file/:id", async (c) => {
                 <footer>
                     <a href={`/api/file/${id}`}>Download</a>
                 </footer>
+                <script src="/static/clientTimestamp.js" type="module"></script>
+            </article>
+        );
+    } catch (error) {
+        if (error instanceof HttpError) {
+            return c.render(<p>{error.message}</p>, error.status);
+        }
+        return c.render(<p>Something went wrong</p>, 500);
+    }
+});
+
+app.post("/text", htmlAuth, limiter(), async (c) => {
+    const body = await c.req.parseBody();
+    try {
+        const url = await saveText(body);
+        return c.render(
+            <p>
+                Your text is available at{" "}
+                <a href={`/text/${url}`}>{url}</a>
+            </p>
+        );
+    } catch (e) {
+        if (e instanceof HttpError) {
+            return c.render(<p>{e.message}</p>, e.status);
+        }
+        return c.render(<p>Something went wrong</p>, 500);
+    }
+});
+
+app.get("/text/:id", async (c) => {
+    const id = c.req.param("id");
+
+    try {
+        const { content, expiresAt } = await getText(id);
+
+        return c.render(
+            <article>
+                <pre style="white-space:pre-wrap;word-break:break-word;max-width:100%;">
+                    {content}
+                </pre>
+                <p>
+                    Expires at:{" "}
+                    <span id="expires-at" data-time={expiresAt}>
+                        {formatDatetime(expiresAt)}
+                    </span>
+                </p>
                 <script src="/static/clientTimestamp.js" type="module"></script>
             </article>
         );

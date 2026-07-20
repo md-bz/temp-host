@@ -1,6 +1,6 @@
 import { CronJob } from "cron";
 import { db } from "./db/db";
-import { files } from "./db/schema";
+import { files, texts } from "./db/schema";
 import { gte, lte, or } from "drizzle-orm";
 import * as fs from "fs/promises";
 
@@ -30,8 +30,13 @@ new CronJob(
             }
         });
 
+        const cleanedTexts = await db
+            .delete(texts)
+            .where(lte(texts.expiresAt, Date.now()))
+            .returning();
+
         console.info(
-            `cleaned database ${JSON.stringify(
+            `cleaned files ${JSON.stringify(
                 cleaned.map((c) => ({
                     id: c.id,
                     expiresAt: c.expiresAt,
@@ -41,6 +46,18 @@ new CronJob(
                 }))
             )}`
         );
+
+        if (cleanedTexts.length > 0) {
+            console.info(
+                `cleaned texts ${JSON.stringify(
+                    cleanedTexts.map((t) => ({
+                        id: t.id,
+                        expiresAt: t.expiresAt,
+                        url: t.url,
+                    }))
+                )}`
+            );
+        }
     },
     null, // onComplete
     true // start
