@@ -15,7 +15,7 @@ authRouter.get("/signup", async (c) => {
     const { id, buffer } = await generateCaptcha();
 
     return c.render(
-        <article>
+        <article class="card">
             <header style="text-align:center">
                 <h4>Welcome, signup</h4>
             </header>
@@ -31,6 +31,7 @@ authRouter.get("/signup", async (c) => {
                 </label>
                 <input type="hidden" name="captchaId" value={id} />
                 <img
+                    class="captcha"
                     src={`data:image/png;base64,${buffer.toString("base64")}`}
                     alt="captcha"
                 />
@@ -43,7 +44,7 @@ authRouter.get("/signup", async (c) => {
                         autoComplete="off"
                     />
                 </label>
-                <button type="submit">Signup</button>
+                <button type="submit" class="btn">Signup</button>
             </form>
             <div style="text-align:center">
                 <small>
@@ -106,7 +107,7 @@ authRouter.get("/login", async (c) => {
     const { id, buffer } = await generateCaptcha();
 
     return c.render(
-        <article>
+        <article class="card">
             <header style="text-align:center">
                 <h4>Welcome back, Login</h4>
             </header>
@@ -119,6 +120,7 @@ authRouter.get("/login", async (c) => {
                 </label>
                 <input type="hidden" name="captchaId" value={id} />
                 <img
+                    class="captcha"
                     src={`data:image/png;base64,${buffer.toString("base64")}`}
                     alt="captcha"
                 />
@@ -131,7 +133,7 @@ authRouter.get("/login", async (c) => {
                         autoComplete="off"
                     />
                 </label>
-                <button type="submit">Login</button>
+                <button type="submit" class="btn">Login</button>
             </form>
             <div style="text-align:center">
                 <small>

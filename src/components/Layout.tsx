@@ -14,9 +14,13 @@ export const Layout: FC = (props) => {
                     rel="stylesheet"
                     href="/static/pico.classless.slate.min.css"
                 />
+                <link rel="stylesheet" href="/static/styles.css" />
             </head>
-            <header>
+            <header class="site-header">
                 <nav>
+                    <a href="/" class="brand">
+                        Temp file
+                    </a>
                     <ul>
                         <li>
                             <a href="/">Home</a>
@@ -28,9 +32,7 @@ export const Layout: FC = (props) => {
                 </nav>
             </header>
             <body>
-                <main style="display: flex; height:80vh; align-items: center; justify-content: center;">
-                    {props.children}
-                </main>
+                <main class="page">{props.children}</main>
             </body>
         </html>
     );

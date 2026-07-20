@@ -45,7 +45,7 @@ app.get("/api", htmlAuth, async (c) => {
     const url = new URL(c.req.url).origin;
 
     return c.render(
-        <article>
+        <article class="card">
             <h2>API</h2>
             <p>you need to set Authorization header with Bearer token:</p>
             <p>Authorization: Bearer {token}</p>
@@ -74,7 +74,7 @@ app.get("/api", htmlAuth, async (c) => {
 app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
     return c.render(
         <>
-            <article>
+            <article class="card">
                 <form action="/file" method="post" enctype="multipart/form-data">
                     <label>
                         How long link is Available
@@ -96,10 +96,10 @@ app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
                     </label>
                     <input type="file" name="file" required />
 
-                    <button type="submit">Upload</button>
+                    <button type="submit" class="btn">Upload</button>
                 </form>
             </article>
-            <article>
+            <article class="card">
                 <h4>Share text</h4>
                 <form action="/text" method="post">
                     <label>
@@ -117,7 +117,7 @@ app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
                         placeholder="Paste your text here..."
                         style="min-height:200px"
                     ></textarea>
-                    <button type="submit">Share Text</button>
+                    <button type="submit" class="btn">Share Text</button>
                 </form>
             </article>
         </>
@@ -129,7 +129,7 @@ app.post("/file", htmlAuth, limiter(), async (c) => {
     try {
         const url = await saveFile(body);
         return c.render(
-            <p>
+            <p class="result">
                 Your file is ready to download at{" "}
                 <a href={`/file/${url}`}>{url}</a>
             </p>
@@ -151,7 +151,7 @@ app.get("/file/:id", async (c) => {
             await getFileInfo(id);
 
         return c.render(
-            <article>
+            <article class="card">
                 <header>
                     <h4>filename: {filename}</h4>
                 </header>
@@ -164,8 +164,8 @@ app.get("/file/:id", async (c) => {
                         {formatDatetime(expiresAt)}
                     </span>
                 </p>
-                <footer>
-                    <a href={`/api/file/${id}`}>Download</a>
+                <footer class="card-footer">
+                    <a href={`/api/file/${id}`} class="btn">Download</a>
                 </footer>
                 <script src="/static/clientTimestamp.js" type="module"></script>
             </article>
@@ -183,7 +183,7 @@ app.post("/text", htmlAuth, limiter(), async (c) => {
     try {
         const url = await saveText(body);
         return c.render(
-            <p>
+            <p class="result">
                 Your text is available at{" "}
                 <a href={`/text/${url}`}>{url}</a>
             </p>
@@ -203,7 +203,7 @@ app.get("/text/:id", async (c) => {
         const { content, expiresAt } = await getText(id);
 
         return c.render(
-            <article>
+            <article class="card">
                 <pre style="white-space:pre-wrap;word-break:break-word;max-width:100%;">
                     {content}
                 </pre>
