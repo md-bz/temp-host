@@ -206,6 +206,7 @@ select:focus {
 }
 
 input[type="file"] {
+    height: auto;
     padding: 0.6rem;
     cursor: pointer;
 }
