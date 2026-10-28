@@ -74,52 +74,59 @@ app.get("/api", htmlAuth, async (c) => {
 app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
     return c.render(
         <>
-            <article class="card">
-                <form action="/file" method="post" enctype="multipart/form-data">
-                    <label>
-                        How long link is Available
-                        <input
-                            type="text"
-                            name="age"
-                            defaultValue="1d"
-                            placeholder="10,10s,10m,10h,10d"
-                        />
-                    </label>
-                    <label>
-                        How many times can the link be downloaded
-                        <input
-                            type="number"
-                            name="downloadCount"
-                            defaultValue="100"
-                            placeholder="100"
-                        />
-                    </label>
-                    <input type="file" name="file" required />
+            <div class="forms">
+                <article class="card">
+                    <h4>Share file</h4>
+                    <form
+                        action="/file"
+                        method="post"
+                        enctype="multipart/form-data"
+                    >
+                        <label>
+                            How long link is Available
+                            <input
+                                type="text"
+                                name="age"
+                                defaultValue="1d"
+                                placeholder="10,10s,10m,10h,10d"
+                            />
+                        </label>
+                        <label>
+                            How many times can the link be downloaded
+                            <input
+                                type="number"
+                                name="downloadCount"
+                                defaultValue="100"
+                                placeholder="100"
+                            />
+                        </label>
+                        <input type="file" name="file" required />
 
-                    <button type="submit" class="btn">Upload</button>
-                </form>
-            </article>
-            <article class="card">
-                <h4>Share text</h4>
-                <form action="/text" method="post">
-                    <label>
-                        How long link is Available
-                        <input
-                            type="text"
-                            name="age"
-                            defaultValue="1d"
-                            placeholder="10,10s,10m,10h,10d"
-                        />
-                    </label>
-                    <textarea
-                        name="content"
-                        required
-                        placeholder="Paste your text here..."
-                        style="min-height:200px"
-                    ></textarea>
-                    <button type="submit" class="btn">Share Text</button>
-                </form>
-            </article>
+                        <button type="submit" class="btn">Upload</button>
+                    </form>
+                </article>
+                <article class="card">
+                    <h4>Share text</h4>
+                    <form action="/text" method="post">
+                        <label>
+                            How long link is Available
+                            <input
+                                type="text"
+                                name="age"
+                                defaultValue="1d"
+                                placeholder="10,10s,10m,10h,10d"
+                            />
+                        </label>
+                        <textarea
+                            name="content"
+                            required
+                            placeholder="Paste your text here..."
+                            style="min-height:200px"
+                        ></textarea>
+                        <button type="submit" class="btn">Share Text</button>
+                    </form>
+                </article>
+            </div>
         </>
     );
 });

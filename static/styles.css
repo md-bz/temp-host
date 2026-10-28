@@ -128,6 +128,41 @@ main.page {
     min-height: calc(100vh - 64px);
 }
 
+.forms {
+    display: grid;
+    gap: 1.5rem;
+}
+
+/* the textarea absorbs the height difference so both submit buttons line up */
+.forms .card,
+.forms form {
+    display: flex;
+    flex-direction: column;
+}
+
+.forms form {
+    flex: 1;
+}
+
+.forms textarea {
+    flex: 1;
+}
+
+.forms .btn {
+    margin-top: auto;
+}
+
+@media (min-width: 1080px) {
+    .forms {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    body:has(.forms) main.page,
+    body:has(.forms) header.site-header nav {
+        max-width: 1080px;
+    }
+}
+
 .card {
     background: var(--bg-card);
     border: 1px solid var(--border);
