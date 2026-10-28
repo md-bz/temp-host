@@ -19,7 +19,8 @@ export const Layout: FC = (props) => {
             <header class="site-header">
                 <nav>
                     <a href="/" class="brand">
-                        Temp file
+                        <span class="primary">Temp</span>
+                        file
                     </a>
                     <ul>
                         <li>

@@ -4,9 +4,8 @@
     --bg-card: #13151f;
     --border: #1e2130;
     --border-strong: #282c3e;
-    --text: #e4e7ef;
-    --text-muted: #8e94aa;
-    --text-faint: #626883;
+    --text: white;
+    --text-muted: #dddddd;
     --primary: #2563eb;
     --primary-hover: #3b82f6;
     --primary-active: #1d4ed8;
@@ -69,11 +68,12 @@ header.site-header {
     top: 0;
     z-index: 10;
     backdrop-filter: blur(14px);
-    background: rgba(7, 9, 18, 0.7);
+    background: var(--bg-elevated);
     border-bottom: 1px solid var(--border);
 }
 
 header.site-header nav {
+    background-color: var(--bg-elevated);
     max-width: 720px;
     margin: 0 auto;
     padding: 0.85rem var(--space);
@@ -292,6 +292,10 @@ textarea {
     background: var(--primary-hover);
     box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
     transform: translateY(-1px);
+}
+
+.primary {
+    color: var(--primary);
 }
 
 .btn:active {
