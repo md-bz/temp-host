@@ -19,7 +19,7 @@ No test, lint, typecheck, or format scripts exist.
 - **API router**: `src/api.ts` — `POST /api/file` (auth+rate-limited), `GET /api/file/:id` (public, stream download)
 - **Auth**: JWT. Two middleware: `htmlAuth` (reads token from cookie), `jsonAuth` (reads from `Authorization: Bearer`). Both reject blocked users (`users.blocked_at`). Set `SKIP_AUTH=true` to disable.
 - **Admin**: `src/admin.tsx` — `/admin` dashboard (guarded by `adminAuth`, requires `users.role = 'admin'`): user list with upload counts and block/unblock. Uploads store the uploader in `files.user_id`.
-- **Profile**: `src/profile.tsx` — `/profile` (htmlAuth): view/edit name, email, password. Changing email or password requires the current password. `/profile/files` lists the user's own uploads.
+- **Profile**: `src/profile.tsx` — `/profile` (htmlAuth): view/edit name, email, password. Changing email or password requires the current password. `/profile/files` lists the user's own uploads and lets them delete them.
 - **Rate limiting**: Redis-backed (`hono-rate-limiter` + `rate-limit-redis`). Skip with `RATE_LIMIT_SKIP=true`. Keyed by JWT `id` (or `"everyone"` if no JWT).
 - **CAPTCHA**: Redis-backed, generated with `captcha-canvas` + `@napi-rs/canvas`. Requires fonts on system (`fontconfig` in Docker).
 - **Cleanup cron**: `src/cron.ts` — deletes expired/over-downloaded files daily at 5:00 AM.

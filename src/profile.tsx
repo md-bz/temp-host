@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { eq, ne, and, sql, desc } from "drizzle-orm";
+import * as fs from "fs/promises";
 import * as argon2 from "argon2";
 import { db } from "./db/db";
 import { files, users } from "./db/schema";
@@ -55,7 +56,9 @@ const ProfileForm = (props: {
                     placeholder="needed to change email or password"
                 />
             </label>
-            <button type="submit" class="btn">Save</button>
+            <button type="submit" class="btn">
+                Save
+            </button>
         </form>
     </article>
 );
@@ -98,6 +101,7 @@ profileRouter.get("/files", async (c) => {
                                 <th>Downloads</th>
                                 <th>Expires</th>
                                 <th>Status</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -118,7 +122,23 @@ profileRouter.get("/files", async (c) => {
                                             {f.maxDownloadCount}
                                         </td>
                                         <td>{formatDatetime(f.expiresAt)}</td>
-                                        <td>{expired ? "expired" : "active"}</td>
+                                        <td>
+                                            {expired ? "expired" : "active"}
+                                        </td>
+                                        <td>
+                                            <form
+                                                action={`/profile/files/${f.id}/delete`}
+                                                method="post"
+                                                onsubmit="return confirm('Delete this file?')"
+                                            >
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-sm"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </td>
                                     </tr>
                                 );
                             })}
@@ -126,8 +146,43 @@ profileRouter.get("/files", async (c) => {
                     </table>
                 </div>
             )}
-        </article>
+        </article>,
     );
+});
+
+profileRouter.post("/files/:id/delete", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.redirect("/auth/login", 302);
+
+    const id = Number(c.req.param("id"));
+    const file = await db
+        .select()
+        .from(files)
+        .where(and(eq(files.id, id), eq(files.userId, user.id)))
+        .get();
+
+    if (file) {
+        try {
+            await fs.unlink(file.storagePath);
+        } catch (error) {
+            // already gone from disk: safe to drop the row
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+                console.error(error);
+                return c.render(
+                    <article class="card">
+                        <h4>Could not delete file</h4>
+                        <p>{file.filename} could not be removed, nothing was deleted.</p>
+                        <a href="/profile/files">Back to files</a>
+                    </article>,
+                    500
+                );
+            }
+        }
+
+        await db.delete(files).where(eq(files.id, file.id));
+    }
+
+    return c.redirect("/profile/files", 303);
 });
 
 profileRouter.get("/", async (c) => {
@@ -145,14 +200,16 @@ profileRouter.post("/", async (c) => {
     const name = body.name?.trim() || user.name;
     const typedEmail = body.email?.trim() || user.email;
     // same email (any casing) or empty = not changed
-    const changingEmail =
-        typedEmail.toLowerCase() !== user.email.toLowerCase();
+    const changingEmail = typedEmail.toLowerCase() !== user.email.toLowerCase();
     const email = changingEmail ? typedEmail : user.email;
     const newPassword = body.newPassword ?? "";
     const currentPassword = body.currentPassword ?? "";
 
     const fail = (error: string, status: ContentfulStatusCode = 400) =>
-        c.render(<ProfileForm name={name} email={email} error={error} />, status);
+        c.render(
+            <ProfileForm name={name} email={email} error={error} />,
+            status,
+        );
 
     const changingPassword = newPassword.length > 0;
 
@@ -169,8 +226,8 @@ profileRouter.post("/", async (c) => {
             .where(
                 and(
                     sql`lower(${users.email}) = ${email.toLowerCase()}`,
-                    ne(users.id, user.id)
-                )
+                    ne(users.id, user.id),
+                ),
             )
             .get();
         if (taken) {
@@ -192,6 +249,6 @@ profileRouter.post("/", async (c) => {
     return c.render(
         <p class="result">
             Profile updated. <a href="/">Back to home</a>
-        </p>
+        </p>,
     );
 });
