@@ -158,9 +158,9 @@ main.page {
     }
 
     body:has(.forms) main.page,
-    body:has(.admin) main.page,
+    body:has(.wide) main.page,
     body:has(.forms) header.site-header nav,
-    body:has(.admin) header.site-header nav {
+    body:has(.wide) header.site-header nav {
         max-width: 1080px;
     }
 }

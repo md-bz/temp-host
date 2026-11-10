@@ -1,10 +1,12 @@
 import { Hono } from "hono";
-import { eq, ne, and, sql } from "drizzle-orm";
+import { eq, ne, and, sql, desc } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { db } from "./db/db";
-import { users } from "./db/schema";
+import { files, users } from "./db/schema";
 import { htmlAuth } from "./auth";
 import { ContentfulStatusCode } from "hono/utils/http-status";
+//@ts-ignore
+import { formatDatetime } from "../static/helper";
 
 export const profileRouter = new Hono();
 
@@ -65,6 +67,68 @@ async function currentUser(c: any) {
         .where(eq(users.id, c.get("jwtPayload")!.id))
         .get();
 }
+
+profileRouter.get("/files", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.redirect("/auth/login", 302);
+
+    const rows = await db
+        .select()
+        .from(files)
+        .where(eq(files.userId, user.id))
+        .orderBy(desc(files.uploadedAt));
+
+    const size = (bytes: number) =>
+        bytes < 1024 * 1024
+            ? `${(bytes / 1024).toFixed(1)} KB`
+            : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+    return c.render(
+        <article class="card wide">
+            <h4>My files</h4>
+            {rows.length === 0 ? (
+                <p>No files uploaded yet.</p>
+            ) : (
+                <div style="overflow-x:auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Size</th>
+                                <th>Downloads</th>
+                                <th>Expires</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((f) => {
+                                const expired =
+                                    f.expiresAt < Date.now() ||
+                                    f.downloadCount >= f.maxDownloadCount;
+                                return (
+                                    <tr>
+                                        <td>
+                                            <a href={`/file/${f.url}`}>
+                                                {f.filename}
+                                            </a>
+                                        </td>
+                                        <td>{size(f.size)}</td>
+                                        <td>
+                                            {f.downloadCount}/
+                                            {f.maxDownloadCount}
+                                        </td>
+                                        <td>{formatDatetime(f.expiresAt)}</td>
+                                        <td>{expired ? "expired" : "active"}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </article>
+    );
+});
 
 profileRouter.get("/", async (c) => {
     const user = await currentUser(c);

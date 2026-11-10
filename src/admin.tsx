@@ -26,7 +26,7 @@ adminRouter.get("/", async (c) => {
     const me = c.get("jwtPayload")?.id as number | undefined;
 
     return c.render(
-        <article class="card admin">
+        <article class="card wide">
             <h2>Users</h2>
             <div style="overflow-x:auto">
                 <table>
