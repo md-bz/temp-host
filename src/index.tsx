@@ -8,6 +8,7 @@ import { formatDatetime } from "../static/helper";
 import {} from "./cron";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { authRouter, htmlAuth } from "./auth";
+import { adminRouter } from "./admin";
 import { limiter } from "./ratelimter";
 
 const app = new Hono();
@@ -31,6 +32,7 @@ app.use(async (c, next) => {
 
 // this is placed here to inherit the layout app router
 app.route("/auth", authRouter);
+app.route("/admin", adminRouter);
 
 app.use("/static/*", serveStatic({ root: "./" }));
 
@@ -134,7 +136,7 @@ app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
 app.post("/file", htmlAuth, limiter(), async (c) => {
     const body = await c.req.parseBody();
     try {
-        const url = await saveFile(body);
+        const url = await saveFile(body, c.get("jwtPayload")?.id);
         return c.render(
             <p class="result">
                 Your file is ready to download at{" "}

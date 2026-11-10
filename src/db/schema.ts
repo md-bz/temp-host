@@ -19,6 +19,7 @@ export const files = sqliteTable("files", {
     maxDownloadCount: t.integer("max_download_count").notNull().default(10000),
     password: t.text("password"),
     url: t.text("url").notNull(),
+    userId: t.integer("user_id").references(() => users.id),
 });
 
 export const texts = sqliteTable("texts", {
@@ -38,4 +39,6 @@ export const users = t.sqliteTable("users", {
     email: t.text("email").notNull().unique(),
     password: t.text("password").notNull(),
     createdAt: t.integer("created_at").default(sql`(strftime('%s','now'))`),
+    role: t.text("role").notNull().default("user"),
+    blockedAt: t.integer("blocked_at"), // UNIX timestamp, null = not blocked
 });

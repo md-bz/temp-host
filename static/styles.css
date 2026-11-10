@@ -158,7 +158,9 @@ main.page {
     }
 
     body:has(.forms) main.page,
-    body:has(.forms) header.site-header nav {
+    body:has(.admin) main.page,
+    body:has(.forms) header.site-header nav,
+    body:has(.admin) header.site-header nav {
         max-width: 1080px;
     }
 }
@@ -307,6 +309,12 @@ textarea {
 .btn:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
+.btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+    box-shadow: none;
 }
 
 a {

@@ -17,7 +17,8 @@ No test, lint, typecheck, or format scripts exist.
 - **Runtime**: Bun, **Framework**: Hono with JSX (`hono/jsx`), **DB**: SQLite via Drizzle ORM (turso dialect)
 - **Entrypoint**: `src/index.tsx` — mounts `/api` router (JSON), `/auth` router (HTML forms), serves `/file` and `/` HTML pages
 - **API router**: `src/api.ts` — `POST /api/file` (auth+rate-limited), `GET /api/file/:id` (public, stream download)
-- **Auth**: JWT. Two middleware: `htmlAuth` (reads token from cookie), `jsonAuth` (reads from `Authorization: Bearer`). Set `SKIP_AUTH=true` to disable.
+- **Auth**: JWT. Two middleware: `htmlAuth` (reads token from cookie), `jsonAuth` (reads from `Authorization: Bearer`). Both reject blocked users (`users.blocked_at`). Set `SKIP_AUTH=true` to disable.
+- **Admin**: `src/admin.tsx` — `/admin` dashboard (guarded by `adminAuth`, requires `users.role = 'admin'`): user list with upload counts and block/unblock. Uploads store the uploader in `files.user_id`.
 - **Rate limiting**: Redis-backed (`hono-rate-limiter` + `rate-limit-redis`). Skip with `RATE_LIMIT_SKIP=true`. Keyed by JWT `id` (or `"everyone"` if no JWT).
 - **CAPTCHA**: Redis-backed, generated with `captcha-canvas` + `@napi-rs/canvas`. Requires fonts on system (`fontconfig` in Docker).
 - **Cleanup cron**: `src/cron.ts` — deletes expired/over-downloaded files daily at 5:00 AM.
@@ -25,7 +26,7 @@ No test, lint, typecheck, or format scripts exist.
 
 ## Environment (`.env`)
 
-Key vars: `DATABASE_URL` (file:./db.sqlite), `JWT_SECRET`, `REDIS_URL`, `SKIP_AUTH`, `MAX_AGE`, `MAX_DOWNLOAD_COUNT`, `MAX_FILE_SIZE` (MB), `RATE_LIMIT_*`
+Key vars: `DATABASE_URL` (file:./db.sqlite), `JWT_SECRET`, `REDIS_URL`, `SKIP_AUTH`, `MAX_AGE`, `MAX_DOWNLOAD_COUNT`, `MAX_FILE_SIZE` (MB), `RATE_LIMIT_*`, `ADMIN_EMAIL` + `ADMIN_PASSWORD` (creates/promotes that account to admin on startup)
 
 ## Docker
 

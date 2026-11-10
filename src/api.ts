@@ -9,7 +9,7 @@ api.post("/file", jsonAuth, limiter("json"), async (c) => {
     const body = await c.req.parseBody();
 
     try {
-        const url = await saveFile(body);
+        const url = await saveFile(body, c.get("jwtPayload")?.id);
         return c.json({ url });
     } catch (error) {
         console.error(error);

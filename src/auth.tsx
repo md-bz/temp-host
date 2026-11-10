@@ -44,14 +44,16 @@ authRouter.get("/signup", async (c) => {
                         autoComplete="off"
                     />
                 </label>
-                <button type="submit" class="btn">Signup</button>
+                <button type="submit" class="btn">
+                    Signup
+                </button>
             </form>
             <div style="text-align:center">
                 <small>
                     already have an account? <a href="/auth/login">login</a>
                 </small>
             </div>
-        </article>
+        </article>,
     );
 });
 
@@ -70,7 +72,7 @@ authRouter.post("/signup", async (c) => {
                 <h2>Invalid or expired captcha</h2>
                 <a href="/auth/signup">Try again</a>
             </article>,
-            400
+            400,
         );
     }
 
@@ -86,7 +88,7 @@ authRouter.post("/signup", async (c) => {
                 <h2>Email already exists</h2>
                 <a href="/auth/signup">Try again</a>
             </article>,
-            400
+            400,
         );
     }
 
@@ -98,7 +100,7 @@ authRouter.post("/signup", async (c) => {
             <h2>User created successfully</h2>
             <a href="/auth/login">Login now</a>
         </article>,
-        201
+        201,
     );
 });
 
@@ -133,14 +135,16 @@ authRouter.get("/login", async (c) => {
                         autoComplete="off"
                     />
                 </label>
-                <button type="submit" class="btn">Login</button>
+                <button type="submit" class="btn">
+                    Login
+                </button>
             </form>
             <div style="text-align:center">
                 <small>
                     don't have an account? <a href="/auth/signup">signup</a>
                 </small>
             </div>
-        </article>
+        </article>,
     );
 });
 
@@ -164,7 +168,7 @@ authRouter.post("/login", async (c) => {
                 <h2>Invalid or expired captcha</h2>
                 <a href="/auth/login">Try again</a>
             </article>,
-            400
+            400,
         );
     }
 
@@ -179,7 +183,16 @@ authRouter.post("/login", async (c) => {
                 <h2>Invalid email or password</h2>
                 <a href="/auth/login">Try again</a>
             </article>,
-            401
+            401,
+        );
+    }
+
+    if (user.blockedAt) {
+        return c.render(
+            <article>
+                <h2>Your account has been blocked</h2>
+            </article>,
+            403,
         );
     }
 
@@ -196,26 +209,36 @@ authRouter.post("/login", async (c) => {
 
 const skipAuth = process.env.SKIP_AUTH === "true";
 
+const cookieToken = (c: any) =>
+    c.req
+        .header("Cookie")
+        ?.split(";")
+        .find((x: string) => x.startsWith("token="))
+        ?.split("=")[1];
+
+async function userFromToken(token?: string) {
+    if (!token) return;
+    try {
+        const payload = await verify(token, jwtSecret);
+        return await db
+            .select()
+            .from(users)
+            .where(eq(users.id, payload.id as number))
+            .get();
+    } catch {
+        return;
+    }
+}
+
 export const htmlAuth = createMiddleware(async (c, next) => {
     if (skipAuth) return await next();
 
-    const token = c.req
-        .header("Cookie")
-        ?.split(";")
-        .find((x) => x.startsWith("token="))
-        ?.split("=")[1];
-
-    if (!token) {
+    const user = await userFromToken(cookieToken(c));
+    if (!user || user.blockedAt) {
         return c.redirect("/auth/login", 302);
     }
 
-    try {
-        const res = await verify(token, jwtSecret);
-        c.set("jwtPayload", res);
-    } catch (error) {
-        return c.redirect("/auth/login", 302);
-    }
-
+    c.set("jwtPayload", { id: user.id });
     await next();
 });
 
@@ -228,12 +251,57 @@ export const jsonAuth = createMiddleware(async (c, next) => {
         return c.json({ error: "No token" }, 401);
     }
 
-    try {
-        const res = await verify(token, jwtSecret);
-        c.set("jwtPayload", res);
-    } catch (error) {
+    const user = await userFromToken(token);
+    if (!user) {
         return c.json({ error: "Invalid token" }, 401);
     }
+    if (user.blockedAt) {
+        return c.json({ error: "Account blocked" }, 403);
+    }
 
+    c.set("jwtPayload", { id: user.id });
     await next();
 });
+
+export const adminAuth = createMiddleware(async (c, next) => {
+    if (skipAuth) return await next();
+
+    const user = await userFromToken(cookieToken(c));
+    if (!user || user.blockedAt) {
+        return c.redirect("/auth/login", 302);
+    }
+    if (user.role !== "admin") {
+        return c.render(<h2>Forbidden</h2>, 403);
+    }
+
+    c.set("jwtPayload", { id: user.id });
+    await next();
+});
+
+// promotes ADMIN_EMAIL to admin, creating the account if it doesn't exist
+const adminEmail = process.env.ADMIN_EMAIL;
+if (adminEmail) {
+    const existing = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, adminEmail))
+        .get();
+
+    if (!existing) {
+        const adminPassword = process.env.ADMIN_PASSWORD;
+        if (!adminPassword) {
+            throw new Error("ADMIN_PASSWORD is not set");
+        }
+        await db.insert(users).values({
+            name: "Admin",
+            email: adminEmail,
+            password: await argon2.hash(adminPassword),
+            role: "admin",
+        });
+    } else if (existing.role !== "admin") {
+        await db
+            .update(users)
+            .set({ role: "admin" })
+            .where(eq(users.id, existing.id));
+    }
+}

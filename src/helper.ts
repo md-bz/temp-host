@@ -65,7 +65,10 @@ export class HttpError extends Error {
     }
 }
 
-export async function saveFile(body: { [key: string]: string | File }) {
+export async function saveFile(
+    body: { [key: string]: string | File },
+    userId?: number
+) {
     const file = body["file"] as File;
     const downloadCount = body["downloadCount"] as string;
     const age = body["age"] as string;
@@ -99,6 +102,7 @@ export async function saveFile(body: { [key: string]: string | File }) {
         ),
         url,
         storagePath: storagePath,
+        userId,
     });
 
     return url;
