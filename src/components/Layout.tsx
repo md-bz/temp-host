@@ -29,6 +29,9 @@ export const Layout: FC = (props) => {
                         <li>
                             <a href="/api">API</a>
                         </li>
+                        <li>
+                            <a href="/profile">Profile</a>
+                        </li>
                     </ul>
                 </nav>
             </header>

@@ -9,6 +9,7 @@ import {} from "./cron";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { authRouter, htmlAuth } from "./auth";
 import { adminRouter } from "./admin";
+import { profileRouter } from "./profile";
 import { limiter } from "./ratelimter";
 
 const app = new Hono();
@@ -33,6 +34,7 @@ app.use(async (c, next) => {
 // this is placed here to inherit the layout app router
 app.route("/auth", authRouter);
 app.route("/admin", adminRouter);
+app.route("/profile", profileRouter);
 
 app.use("/static/*", serveStatic({ root: "./" }));
 
