@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { db } from "./db/db";
 import { users } from "./db/schema";
-import { setCookie } from "hono/cookie";
+import { setCookie, deleteCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { generateCaptcha, isCaptchaValid } from "./captcha";
 
@@ -205,6 +205,11 @@ authRouter.post("/login", async (c) => {
         httpOnly: true,
     });
     return c.redirect("/", 301);
+});
+
+authRouter.get("/logout", (c) => {
+    deleteCookie(c, "token");
+    return c.redirect("/auth/login", 302);
 });
 
 const skipAuth = process.env.SKIP_AUTH === "true";

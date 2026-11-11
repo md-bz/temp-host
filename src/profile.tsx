@@ -60,6 +60,11 @@ const ProfileForm = (props: {
                 Save
             </button>
         </form>
+        <div style="text-align:center">
+            <small>
+                <a href="/auth/logout">logout</a>
+            </small>
+        </div>
     </article>
 );
 
