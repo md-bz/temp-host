@@ -1,8 +1,10 @@
 import { Hono } from "hono";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, isNull, sql } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import { db } from "./db/db";
-import { files, users } from "./db/schema";
+import { files, invites, users } from "./db/schema";
 import { adminAuth } from "./auth";
+import { signupsRestricted, setSignupsRestricted } from "./helper";
 
 export const adminRouter = new Hono();
 
@@ -24,8 +26,17 @@ adminRouter.get("/", async (c) => {
         .orderBy(desc(users.id));
 
     const me = c.get("jwtPayload")?.id as number | undefined;
+    const restricted = await signupsRestricted();
+    const codes = restricted
+        ? await db
+              .select()
+              .from(invites)
+              .where(isNull(invites.usedAt))
+              .orderBy(desc(invites.id))
+        : [];
 
     return c.render(
+        <>
         <article class="card wide">
             <h2>Users</h2>
             <div style="overflow-x:auto">
@@ -71,7 +82,56 @@ adminRouter.get("/", async (c) => {
                 </table>
             </div>
         </article>
+        <article class="card wide">
+            <h4>Signups</h4>
+            <p>
+                Signups are{" "}
+                {restricted
+                    ? "restricted to one-time invite codes"
+                    : "open to everyone"}
+                .
+            </p>
+            <form action="/admin/signups" method="post">
+                <button type="submit" class="btn btn-sm">
+                    {restricted ? "Allow open signups" : "Restrict signups"}
+                </button>
+            </form>
+
+            {restricted && (
+                <>
+                    <form action="/admin/invites" method="post">
+                        <button
+                            type="submit"
+                            class="btn btn-sm"
+                            style="margin-top:1rem"
+                        >
+                            Create invite code
+                        </button>
+                    </form>
+                    {codes.length > 0 && (
+                        <ul style="margin-top:1rem">
+                            {codes.map((code) => (
+                                <li>
+                                    <code>{code.code}</code>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </>
+            )}
+        </article>
+        </>
     );
+});
+
+adminRouter.post("/signups", async (c) => {
+    await setSignupsRestricted(!(await signupsRestricted()));
+    return c.redirect("/admin", 303);
+});
+
+adminRouter.post("/invites", async (c) => {
+    await db.insert(invites).values({ code: nanoid(10) });
+    return c.redirect("/admin", 303);
 });
 
 adminRouter.post("/block/:id", async (c) => {

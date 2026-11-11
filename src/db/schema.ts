@@ -42,3 +42,21 @@ export const users = t.sqliteTable("users", {
     role: t.text("role").notNull().default("user"),
     blockedAt: t.integer("blocked_at"), // UNIX timestamp, null = not blocked
 });
+
+// One-time signup codes
+export const invites = t.sqliteTable("invites", {
+    id: t.int().primaryKey({ autoIncrement: true }),
+    code: t.text("code").notNull().unique(),
+    createdAt: t
+        .integer("created_at")
+        .notNull()
+        .default(sql`(strftime('%s','now'))`),
+    usedAt: t.integer("used_at"), // UNIX timestamp, null = unused
+    usedBy: t.integer("used_by").references(() => users.id),
+});
+
+export const settings = t.sqliteTable("settings", {
+    id: t.int().primaryKey({ autoIncrement: true }),
+    key: t.text("key").notNull().unique(),
+    value: t.text("value").notNull(),
+});

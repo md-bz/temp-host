@@ -1,7 +1,7 @@
 import * as fs from "fs/promises";
 import { nanoid } from "nanoid";
 import { db } from "./db/db";
-import { files, texts } from "./db/schema";
+import { files, settings, texts } from "./db/schema";
 import { join } from "path";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { eq } from "drizzle-orm";
@@ -165,4 +165,23 @@ export async function getText(id: string) {
     }
 
     return text;
+}
+
+export async function signupsRestricted() {
+    const row = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.key, "signupRestricted"))
+        .get();
+
+    return row?.value === "true";
+}
+
+export async function setSignupsRestricted(restricted: boolean) {
+    const value = String(restricted);
+
+    await db
+        .insert(settings)
+        .values({ key: "signupRestricted", value })
+        .onConflictDoUpdate({ target: settings.key, set: { value } });
 }

@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { sign, verify } from "hono/jwt";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import * as argon2 from "argon2";
 import { db } from "./db/db";
-import { users } from "./db/schema";
+import { invites, users } from "./db/schema";
+import { signupsRestricted } from "./helper";
 import { setCookie, deleteCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { generateCaptcha, isCaptchaValid } from "./captcha";
@@ -13,6 +14,7 @@ export const authRouter = new Hono();
 // Signup form
 authRouter.get("/signup", async (c) => {
     const { id, buffer } = await generateCaptcha();
+    const restricted = await signupsRestricted();
 
     return c.render(
         <article class="card">
@@ -20,6 +22,12 @@ authRouter.get("/signup", async (c) => {
                 <h4>Welcome, signup</h4>
             </header>
             <form action="/auth/signup" method="post">
+                {restricted && (
+                    <label>
+                        Invite code{" "}
+                        <input type="text" name="inviteCode" required />
+                    </label>
+                )}
                 <label>
                     Name <input type="text" name="name" required />
                 </label>
@@ -92,8 +100,53 @@ authRouter.post("/signup", async (c) => {
         );
     }
 
+    let invite: typeof invites.$inferSelect | undefined;
+    if (await signupsRestricted()) {
+        const code = (body as Record<string, string>).inviteCode?.trim();
+        invite = code
+            ? await db
+                  .select()
+                  .from(invites)
+                  .where(eq(invites.code, code))
+                  .get()
+            : undefined;
+
+        if (!invite || invite.usedAt) {
+            return c.render(
+                <article>
+                    <h2>Invalid or used invite code</h2>
+                    <a href="/auth/signup">Try again</a>
+                </article>,
+                400,
+            );
+        }
+    }
+
     const hash = await argon2.hash(password);
-    await db.insert(users).values({ name, email, password: hash });
+    const [created] = await db
+        .insert(users)
+        .values({ name, email, password: hash })
+        .returning();
+
+    if (invite) {
+        // mark atomically so the same code can't be used twice concurrently
+        const marked = await db
+            .update(invites)
+            .set({ usedAt: Date.now(), usedBy: created.id })
+            .where(and(eq(invites.id, invite.id), isNull(invites.usedAt)))
+            .returning();
+
+        if (marked.length === 0) {
+            await db.delete(users).where(eq(users.id, created.id));
+            return c.render(
+                <article>
+                    <h2>Invalid or used invite code</h2>
+                    <a href="/auth/signup">Try again</a>
+                </article>,
+                400,
+            );
+        }
+    }
 
     return c.render(
         <article>
