@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { desc, eq, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "./db/db";
-import { files, invites, users } from "./db/schema";
+import { files, invites, texts, users } from "./db/schema";
 import { adminAuth } from "./auth";
 import { signupsRestricted, setSignupsRestricted } from "./helper";
 
@@ -18,10 +18,12 @@ adminRouter.get("/", async (c) => {
             email: users.email,
             role: users.role,
             blockedAt: users.blockedAt,
-            uploads: sql<number>`cast(count(${files.id}) as integer)`,
+            uploads: sql<number>`cast(count(distinct ${files.id}) as integer)`,
+            texts: sql<number>`cast(count(distinct ${texts.id}) as integer)`,
         })
         .from(users)
         .leftJoin(files, eq(files.userId, users.id))
+        .leftJoin(texts, eq(texts.userId, users.id))
         .groupBy(users.id)
         .orderBy(desc(users.id));
 
@@ -47,6 +49,7 @@ adminRouter.get("/", async (c) => {
                                 <th>Email</th>
                                 <th>Role</th>
                                 <th>Uploads</th>
+                                <th>Texts</th>
                                 <th>Status</th>
                                 <th></th>
                             </tr>
@@ -58,6 +61,7 @@ adminRouter.get("/", async (c) => {
                                     <td>{u.email}</td>
                                     <td>{u.role}</td>
                                     <td>{u.uploads}</td>
+                                    <td>{u.texts}</td>
                                     <td>
                                         {u.blockedAt ? "blocked" : "active"}
                                     </td>
