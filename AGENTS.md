@@ -20,7 +20,7 @@ No test, lint, typecheck, or format scripts exist.
 - **Auth**: JWT. Two middleware: `htmlAuth` (reads token from cookie), `jsonAuth` (reads from `Authorization: Bearer`). Both reject blocked users (`users.blocked_at`). Set `SKIP_AUTH=true` to disable.
 - **Admin**: `src/admin.tsx` — `/admin` dashboard (guarded by `adminAuth`, requires `users.role = 'admin'`): user list with upload counts and block/unblock. Uploads store the uploader in `files.user_id`. Also toggles signup mode (`POST /admin/signups`) and creates one-time invite codes (`POST /admin/invites`, nanoid).
 - **Signup modes**: `settings` is a key/value table (`key` unique, `value` text). `signupRestricted` holds `"true"`/`"false"`; add new settings as rows. When restricted, `/auth/signup` requires an unused `invites.code`; the code is marked used atomically after the user is created.
-- **Profile**: `src/profile.tsx` — `/profile` (htmlAuth): view/edit name, email, password. Changing email or password requires the current password. `/profile/files` lists the user's own uploads and lets them delete them.
+- **Profile**: `src/profile.tsx` — `/profile` (htmlAuth): view/edit name, email, password. Changing email or password requires the current password. `/profile/files` lists the user's own files and saved texts (`files.user_id` / `texts.user_id`) and lets them delete either.
 - **Rate limiting**: Redis-backed (`hono-rate-limiter` + `rate-limit-redis`). Skip with `RATE_LIMIT_SKIP=true`. Keyed by JWT `id` (or `"everyone"` if no JWT).
 - **CAPTCHA**: Redis-backed, generated with `captcha-canvas` + `@napi-rs/canvas`. Requires fonts on system (`fontconfig` in Docker).
 - **Cleanup cron**: `src/cron.ts` — deletes expired/over-downloaded files daily at 5:00 AM.

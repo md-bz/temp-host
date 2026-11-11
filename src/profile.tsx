@@ -3,7 +3,7 @@ import { eq, ne, and, sql, desc } from "drizzle-orm";
 import * as fs from "fs/promises";
 import * as argon2 from "argon2";
 import { db } from "./db/db";
-import { files, users } from "./db/schema";
+import { files, texts, users } from "./db/schema";
 import { htmlAuth } from "./auth";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 //@ts-ignore
@@ -86,12 +86,19 @@ profileRouter.get("/files", async (c) => {
         .where(eq(files.userId, user.id))
         .orderBy(desc(files.uploadedAt));
 
+    const savedTexts = await db
+        .select()
+        .from(texts)
+        .where(eq(texts.userId, user.id))
+        .orderBy(desc(texts.createdAt));
+
     const size = (bytes: number) =>
         bytes < 1024 * 1024
             ? `${(bytes / 1024).toFixed(1)} KB`
             : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
     return c.render(
+        <>
         <article class="card wide">
             <h4>My files</h4>
             {rows.length === 0 ? (
@@ -151,8 +158,77 @@ profileRouter.get("/files", async (c) => {
                     </table>
                 </div>
             )}
-        </article>,
+        </article>
+        <article class="card wide">
+            <h4>My texts</h4>
+            {savedTexts.length === 0 ? (
+                <p>No texts saved yet.</p>
+            ) : (
+                <div style="overflow-x:auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Text</th>
+                                <th>Created</th>
+                                <th>Expires</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {savedTexts.map((t) => {
+                                const expired = t.expiresAt < Date.now();
+                                return (
+                                    <tr>
+                                        <td>
+                                            <a href={`/text/${t.url}`}>
+                                                {t.content.slice(0, 60)}
+                                                {t.content.length > 60 && "…"}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {formatDatetime(t.createdAt * 1000)}
+                                        </td>
+                                        <td>{formatDatetime(t.expiresAt)}</td>
+                                        <td>
+                                            {expired ? "expired" : "active"}
+                                        </td>
+                                        <td>
+                                            <form
+                                                action={`/profile/texts/${t.id}/delete`}
+                                                method="post"
+                                                onsubmit="return confirm('Delete this text?')"
+                                            >
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-sm"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </article>
+        </>,
     );
+});
+
+profileRouter.post("/texts/:id/delete", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.redirect("/auth/login", 302);
+
+    const id = Number(c.req.param("id"));
+    await db
+        .delete(texts)
+        .where(and(eq(texts.id, id), eq(texts.userId, user.id)));
+
+    return c.redirect("/profile/files", 303);
 });
 
 profileRouter.post("/files/:id/delete", async (c) => {

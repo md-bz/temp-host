@@ -138,7 +138,10 @@ export async function getFile(id: string) {
     return { data, ...file };
 }
 
-export async function saveText(body: { [key: string]: string | File }) {
+export async function saveText(
+    body: { [key: string]: string | File },
+    userId?: number
+) {
     const content = body["content"] as string;
     const age = body["age"] as string;
 
@@ -152,6 +155,7 @@ export async function saveText(body: { [key: string]: string | File }) {
         content,
         expiresAt: Date.now() + Math.min(maxAge, toUnixDate(age, Infinity)),
         url,
+        userId,
     });
 
     return url;

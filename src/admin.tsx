@@ -37,90 +37,92 @@ adminRouter.get("/", async (c) => {
 
     return c.render(
         <>
-        <article class="card wide">
-            <h2>Users</h2>
-            <div style="overflow-x:auto">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Uploads</th>
-                            <th>Status</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((u) => (
+            <article class="card wide">
+                <h2>Users</h2>
+                <div style="overflow-x:auto">
+                    <table>
+                        <thead>
                             <tr>
-                                <td>{u.name}</td>
-                                <td>{u.email}</td>
-                                <td>{u.role}</td>
-                                <td>{u.uploads}</td>
-                                <td>{u.blockedAt ? "blocked" : "active"}</td>
-                                <td>
-                                    {u.id !== me && (
-                                        <form
-                                            action={`/admin/block/${u.id}`}
-                                            method="post"
-                                        >
-                                            <button
-                                                type="submit"
-                                                class="btn btn-sm"
-                                            >
-                                                {u.blockedAt
-                                                    ? "Unblock"
-                                                    : "Block"}
-                                            </button>
-                                        </form>
-                                    )}
-                                </td>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Uploads</th>
+                                <th>Status</th>
+                                <th></th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </article>
-        <article class="card wide">
-            <h4>Signups</h4>
-            <p>
-                Signups are{" "}
-                {restricted
-                    ? "restricted to one-time invite codes"
-                    : "open to everyone"}
-                .
-            </p>
-            <form action="/admin/signups" method="post">
-                <button type="submit" class="btn btn-sm">
-                    {restricted ? "Allow open signups" : "Restrict signups"}
-                </button>
-            </form>
-
-            {restricted && (
-                <>
-                    <form action="/admin/invites" method="post">
-                        <button
-                            type="submit"
-                            class="btn btn-sm"
-                            style="margin-top:1rem"
-                        >
-                            Create invite code
-                        </button>
-                    </form>
-                    {codes.length > 0 && (
-                        <ul style="margin-top:1rem">
-                            {codes.map((code) => (
-                                <li>
-                                    <code>{code.code}</code>
-                                </li>
+                        </thead>
+                        <tbody>
+                            {rows.map((u) => (
+                                <tr>
+                                    <td>{u.name}</td>
+                                    <td>{u.email}</td>
+                                    <td>{u.role}</td>
+                                    <td>{u.uploads}</td>
+                                    <td>
+                                        {u.blockedAt ? "blocked" : "active"}
+                                    </td>
+                                    <td>
+                                        {u.id !== me && (
+                                            <form
+                                                action={`/admin/block/${u.id}`}
+                                                method="post"
+                                            >
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-sm"
+                                                >
+                                                    {u.blockedAt
+                                                        ? "Unblock"
+                                                        : "Block"}
+                                                </button>
+                                            </form>
+                                        )}
+                                    </td>
+                                </tr>
                             ))}
-                        </ul>
-                    )}
-                </>
-            )}
-        </article>
-        </>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+            <article class="card wide">
+                <h4>Signups</h4>
+                <p>
+                    Signups are{" "}
+                    {restricted
+                        ? "restricted to one-time invite codes"
+                        : "open to everyone"}
+                    .
+                </p>
+                <form action="/admin/signups" method="post">
+                    <button type="submit" class="btn btn-sm">
+                        {restricted ? "Allow open signups" : "Restrict signups"}
+                    </button>
+                </form>
+
+                {restricted && (
+                    <>
+                        <form action="/admin/invites" method="post">
+                            <button
+                                type="submit"
+                                class="btn btn-sm"
+                                style="margin-top:1rem"
+                            >
+                                Create invite code
+                            </button>
+                        </form>
+                        {codes.length > 0 && (
+                            <ul style="margin-top:1rem">
+                                {codes.map((code) => (
+                                    <li>
+                                        <code>{code.code}</code>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </>
+                )}
+            </article>
+        </>,
     );
 });
 

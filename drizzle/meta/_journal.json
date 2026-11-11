@@ -29,6 +29,13 @@
       "when": 1794387021711,
       "tag": "0003_settings_kv",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794396507731,
+      "tag": "0004_fancy_hydra",
+      "breakpoints": true
     }
   ]
 }

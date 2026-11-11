@@ -1,0 +1,1 @@
+ALTER TABLE `texts` ADD `user_id` integer REFERENCES users(id);

@@ -192,7 +192,7 @@ app.get("/file/:id", async (c) => {
 app.post("/text", htmlAuth, limiter(), async (c) => {
     const body = await c.req.parseBody();
     try {
-        const url = await saveText(body);
+        const url = await saveText(body, c.get("jwtPayload")?.id);
         return c.render(
             <p class="result">
                 Your text is available at{" "}
