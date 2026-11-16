@@ -123,18 +123,20 @@ profileRouter.get("/files", async (c) => {
                                     f.downloadCount >= f.maxDownloadCount;
                                 return (
                                     <tr>
-                                        <td>
+                                        <td data-label="File">
                                             <a href={`/file/${f.url}`}>
                                                 {f.filename}
                                             </a>
                                         </td>
-                                        <td>{size(f.size)}</td>
-                                        <td>
+                                        <td data-label="Size">{size(f.size)}</td>
+                                        <td data-label="Downloads">
                                             {f.downloadCount}/
                                             {f.maxDownloadCount}
                                         </td>
-                                        <td>{formatDatetime(f.expiresAt)}</td>
-                                        <td>
+                                        <td data-label="Expires">
+                                            {formatDatetime(f.expiresAt)}
+                                        </td>
+                                        <td data-label="Status">
                                             {expired ? "expired" : "active"}
                                         </td>
                                         <td>
@@ -180,17 +182,19 @@ profileRouter.get("/files", async (c) => {
                                 const expired = t.expiresAt < Date.now();
                                 return (
                                     <tr>
-                                        <td>
+                                        <td data-label="Text">
                                             <a href={`/text/${t.url}`}>
                                                 {t.content.slice(0, 60)}
                                                 {t.content.length > 60 && "…"}
                                             </a>
                                         </td>
-                                        <td>
+                                        <td data-label="Created">
                                             {formatDatetime(t.createdAt * 1000)}
                                         </td>
-                                        <td>{formatDatetime(t.expiresAt)}</td>
-                                        <td>
+                                        <td data-label="Expires">
+                                            {formatDatetime(t.expiresAt)}
+                                        </td>
+                                        <td data-label="Status">
                                             {expired ? "expired" : "active"}
                                         </td>
                                         <td>

@@ -57,12 +57,12 @@ adminRouter.get("/", async (c) => {
                         <tbody>
                             {rows.map((u) => (
                                 <tr>
-                                    <td>{u.name}</td>
-                                    <td>{u.email}</td>
-                                    <td>{u.role}</td>
-                                    <td>{u.uploads}</td>
-                                    <td>{u.texts}</td>
-                                    <td>
+                                    <td data-label="Name">{u.name}</td>
+                                    <td data-label="Email">{u.email}</td>
+                                    <td data-label="Role">{u.role}</td>
+                                    <td data-label="Files">{u.uploads}</td>
+                                    <td data-label="Texts">{u.texts}</td>
+                                    <td data-label="Status">
                                         {u.blockedAt ? "blocked" : "active"}
                                     </td>
                                     <td>

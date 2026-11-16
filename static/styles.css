@@ -152,15 +152,20 @@ main.page {
     margin-top: auto;
 }
 
+@media (min-width: 900px) {
+    body:has(.wide) main.page,
+    body:has(.wide) header.site-header nav {
+        max-width: 1080px;
+    }
+}
+
 @media (min-width: 1080px) {
     .forms {
         grid-template-columns: 1fr 1fr;
     }
 
     body:has(.forms) main.page,
-    body:has(.wide) main.page,
-    body:has(.forms) header.site-header nav,
-    body:has(.wide) header.site-header nav {
+    body:has(.forms) header.site-header nav {
         max-width: 1080px;
     }
 }
@@ -337,6 +342,51 @@ table form [type="submit"] {
 
 table td:last-child {
     text-align: center;
+}
+
+/* below the wide layout each row becomes a label/value block instead of a table */
+@media (max-width: 899px) {
+    table,
+    table tbody,
+    table tr,
+    table td {
+        display: block;
+        width: 100%;
+    }
+
+    table thead {
+        display: none;
+    }
+
+    table tr {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    table tr:last-child {
+        padding-bottom: 0;
+        border-bottom: 0;
+    }
+
+    table td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.2rem 0;
+        text-align: right;
+    }
+
+    table td::before {
+        content: attr(data-label);
+        flex: none;
+        color: var(--text-muted);
+    }
+
+    table td:last-child {
+        justify-content: flex-end;
+        padding-top: 0.5rem;
+    }
 }
 
 a {
