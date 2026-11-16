@@ -48,7 +48,7 @@ adminRouter.get("/", async (c) => {
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Role</th>
-                                <th>Uploads</th>
+                                <th>Files</th>
                                 <th>Texts</th>
                                 <th>Status</th>
                                 <th></th>
