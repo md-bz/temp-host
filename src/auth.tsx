@@ -206,6 +206,12 @@ if (!process.env.JWT_SECRET) {
 }
 export const jwtSecret = process.env.JWT_SECRET;
 
+// token and cookie expire together
+const sessionSeconds = 60 * 60 * 24 * 7;
+
+const signToken = (id: number) =>
+    sign({ id, exp: Math.floor(Date.now() / 1000) + sessionSeconds }, jwtSecret);
+
 // Login handler
 authRouter.post("/login", async (c) => {
     const body = await c.req.parseBody();
@@ -249,10 +255,10 @@ authRouter.post("/login", async (c) => {
         );
     }
 
-    const token = await sign({ id: user.id }, process.env.JWT_SECRET!);
+    const token = await signToken(user.id);
 
     setCookie(c, "token", token, {
-        expires: new Date(new Date().setDate(new Date().getDate() + 7)),
+        expires: new Date(Date.now() + sessionSeconds * 1000),
         secure: true,
         sameSite: "None",
         httpOnly: true,
@@ -278,6 +284,8 @@ async function userFromToken(token?: string) {
     if (!token) return;
     try {
         const payload = await verify(token, jwtSecret);
+        // tokens issued before expiry existed stay valid forever, so reject them
+        if (!payload.exp) return;
         return await db
             .select()
             .from(users)
