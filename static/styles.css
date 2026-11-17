@@ -324,6 +324,14 @@ textarea {
     box-shadow: none;
 }
 
+.pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
 table th,
 table td {
     padding: 0.8rem 1rem;

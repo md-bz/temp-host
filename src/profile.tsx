@@ -1,11 +1,12 @@
 import { Hono } from "hono";
-import { eq, ne, and, sql, desc } from "drizzle-orm";
+import { eq, ne, and, sql, desc, count } from "drizzle-orm";
 import * as fs from "fs/promises";
 import * as argon2 from "argon2";
 import { db } from "./db/db";
 import { files, texts, users } from "./db/schema";
 import { htmlAuth } from "./auth";
 import { ContentfulStatusCode } from "hono/utils/http-status";
+import { PAGE_SIZE, Pager, pageCount, pageParam } from "./pagination";
 //@ts-ignore
 import { formatDatetime } from "../static/helper";
 
@@ -80,17 +81,43 @@ profileRouter.get("/files", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.redirect("/auth/login", 302);
 
+    const filesTotal = Number(
+        (
+            await db
+                .select({ n: count() })
+                .from(files)
+                .where(eq(files.userId, user.id))
+        ).at(0)?.n ?? 0
+    );
+    const filesPages = pageCount(filesTotal);
+    const filesPage = Math.min(pageParam(c, "page"), filesPages);
+
     const rows = await db
         .select()
         .from(files)
         .where(eq(files.userId, user.id))
-        .orderBy(desc(files.uploadedAt));
+        .orderBy(desc(files.uploadedAt))
+        .limit(PAGE_SIZE)
+        .offset((filesPage - 1) * PAGE_SIZE);
+
+    const textsTotal = Number(
+        (
+            await db
+                .select({ n: count() })
+                .from(texts)
+                .where(eq(texts.userId, user.id))
+        ).at(0)?.n ?? 0
+    );
+    const textsPages = pageCount(textsTotal);
+    const textsPage = Math.min(pageParam(c, "tpage"), textsPages);
 
     const savedTexts = await db
         .select()
         .from(texts)
         .where(eq(texts.userId, user.id))
-        .orderBy(desc(texts.createdAt));
+        .orderBy(desc(texts.createdAt))
+        .limit(PAGE_SIZE)
+        .offset((textsPage - 1) * PAGE_SIZE);
 
     const size = (bytes: number) =>
         bytes < 1024 * 1024
@@ -160,6 +187,12 @@ profileRouter.get("/files", async (c) => {
                     </table>
                 </div>
             )}
+            <Pager
+                url={c.req.url}
+                param="page"
+                page={filesPage}
+                pages={filesPages}
+            />
         </article>
         <article class="card wide">
             <h4>My texts</h4>
@@ -218,6 +251,12 @@ profileRouter.get("/files", async (c) => {
                     </table>
                 </div>
             )}
+            <Pager
+                url={c.req.url}
+                param="tpage"
+                page={textsPage}
+                pages={textsPages}
+            />
         </article>
         </>,
     );

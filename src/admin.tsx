@@ -1,16 +1,23 @@
 import { Hono } from "hono";
-import { desc, eq, isNull, sql } from "drizzle-orm";
+import { count, desc, eq, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "./db/db";
 import { files, invites, texts, users } from "./db/schema";
 import { adminAuth } from "./auth";
 import { signupsRestricted, setSignupsRestricted } from "./helper";
+import { PAGE_SIZE, Pager, pageCount, pageParam } from "./pagination";
 
 export const adminRouter = new Hono();
 
 adminRouter.use("*", adminAuth);
 
 adminRouter.get("/", async (c) => {
+    const total = Number(
+        (await db.select({ n: count() }).from(users)).at(0)?.n ?? 0
+    );
+    const pages = pageCount(total);
+    const page = Math.min(pageParam(c, "page"), pages);
+
     const rows = await db
         .select({
             id: users.id,
@@ -25,7 +32,9 @@ adminRouter.get("/", async (c) => {
         .leftJoin(files, eq(files.userId, users.id))
         .leftJoin(texts, eq(texts.userId, users.id))
         .groupBy(users.id)
-        .orderBy(desc(users.id));
+        .orderBy(desc(users.id))
+        .limit(PAGE_SIZE)
+        .offset((page - 1) * PAGE_SIZE);
 
     const me = c.get("jwtPayload")?.id as number | undefined;
     const restricted = await signupsRestricted();
@@ -87,6 +96,12 @@ adminRouter.get("/", async (c) => {
                         </tbody>
                     </table>
                 </div>
+                <Pager
+                    url={c.req.url}
+                    param="page"
+                    page={page}
+                    pages={pages}
+                />
             </article>
             <article class="card wide">
                 <h4>Signups</h4>
