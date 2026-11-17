@@ -31,6 +31,7 @@ export const texts = sqliteTable("texts", {
         .notNull()
         .default(sql`(strftime('%s','now'))`),
     expiresAt: t.integer("expires_at").notNull(),
+    password: t.text("password"),
     userId: t.integer("user_id").references(() => users.id),
 });
 

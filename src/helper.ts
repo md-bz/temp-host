@@ -1,5 +1,7 @@
 import * as fs from "fs/promises";
+import * as argon2 from "argon2";
 import { nanoid } from "nanoid";
+import { sign, verify } from "hono/jwt";
 import { db } from "./db/db";
 import { files, settings, texts } from "./db/schema";
 import { join } from "path";
@@ -91,6 +93,11 @@ export async function saveFile(
     }
 
     const url = nanoid();
+    const rawPassword = body["password"];
+    const password =
+        typeof rawPassword === "string" && rawPassword.length > 0
+            ? await argon2.hash(rawPassword)
+            : null;
 
     await db.insert(files).values({
         filename: file.name,
@@ -103,6 +110,7 @@ export async function saveFile(
         url,
         storagePath: storagePath,
         userId,
+        password,
     });
 
     return url;
@@ -120,8 +128,36 @@ export async function getFileInfo(id: string) {
     return file;
 }
 
-export async function getFile(id: string) {
+// lets a visitor download one password-protected file for an hour
+export async function fileAccessToken(url: string) {
+    return await sign(
+        { file: url, exp: Math.floor(Date.now() / 1000) + 60 * 60 },
+        process.env.JWT_SECRET!
+    );
+}
+
+export async function canAccessFile(
+    file: { url: string; password: string | null },
+    accessToken?: string
+) {
+    if (!file.password) return true;
+    if (!accessToken) return false;
+
+    try {
+        const payload = await verify(accessToken, process.env.JWT_SECRET!);
+        return payload.file === file.url && !!payload.exp;
+    } catch {
+        return false;
+    }
+}
+
+export async function getFile(id: string, accessToken?: string) {
     const file = await getFileInfo(id);
+
+    if (!(await canAccessFile(file, accessToken))) {
+        throw new HttpError("password required", 401);
+    }
+
     let data;
     try {
         data = await fs.readFile(file.storagePath);
@@ -150,12 +186,18 @@ export async function saveText(
     }
 
     const url = nanoid();
+    const rawPassword = body["password"];
+    const password =
+        typeof rawPassword === "string" && rawPassword.length > 0
+            ? await argon2.hash(rawPassword)
+            : null;
 
     await db.insert(texts).values({
         content,
         expiresAt: Date.now() + Math.min(maxAge, toUnixDate(age, Infinity)),
         url,
         userId,
+        password,
     });
 
     return url;

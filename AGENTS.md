@@ -16,7 +16,8 @@ No test, lint, typecheck, or format scripts exist.
 
 - **Runtime**: Bun, **Framework**: Hono with JSX (`hono/jsx`), **DB**: SQLite via Drizzle ORM (turso dialect)
 - **Entrypoint**: `src/index.tsx` — mounts `/api` router (JSON), `/auth` router (HTML forms), serves `/file` and `/` HTML pages
-- **API router**: `src/api.ts` — `POST /api/file` (auth+rate-limited), `GET /api/file/:id` (public, stream download)
+- **API router**: `src/api.ts` — `POST /api/file` (auth+rate-limited; optional `password` form field), `GET /api/file/:id` (public, stream download; password-protected files need `?access=<token>`)
+- **Protected shares**: `files.password` and `texts.password` are argon2 hashes (empty = public). `/file/:id` shows an unlock form; a correct password renders the info page with a 1-hour JWT `access` token in the download link (`GET /api/file/:id?access=...`, enforced by `canAccessFile` in `src/helper.ts`). `/text/:id` has the same unlock form; the unlock POST just renders the content (no token needed).
 - **Auth**: JWT with a 7-day `exp` (cookie expires with it; tokens without `exp` are rejected). Two middleware: `htmlAuth` (reads token from cookie), `jsonAuth` (reads from `Authorization: Bearer`). Both reject blocked users (`users.blocked_at`). Set `SKIP_AUTH=true` to disable.
 - **Admin**: `src/admin.tsx` — `/admin` dashboard (guarded by `adminAuth`, requires `users.role = 'admin'`): user list with file/text counts and block/unblock. Uploads store the uploader in `files.user_id`. Also toggles signup mode (`POST /admin/signups`) and creates one-time invite codes (`POST /admin/invites`, nanoid).
 - **Signup modes**: `settings` is a key/value table (`key` unique, `value` text). `signupRestricted` holds `"true"`/`"false"`; add new settings as rows. When restricted, `/auth/signup` requires an unused `invites.code`; the code is marked used atomically after the user is created.

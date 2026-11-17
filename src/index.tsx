@@ -2,7 +2,15 @@ import { Hono } from "hono";
 import { api } from "./api";
 import { Layout } from "./components/Layout";
 import { serveStatic } from "hono/bun";
-import { getFileInfo, getText, HttpError, saveFile, saveText } from "./helper";
+import * as argon2 from "argon2";
+import {
+    fileAccessToken,
+    getFileInfo,
+    getText,
+    HttpError,
+    saveFile,
+    saveText,
+} from "./helper";
 //@ts-ignore
 import { formatDatetime } from "../static/helper";
 import {} from "./cron";
@@ -59,6 +67,7 @@ app.get("/api", htmlAuth, async (c) => {
                     <p>POST /api/file</p>
                     <p>needs Auth, is rate limited</p>
                     <p>can use age as part of form data for expiration</p>
+                    <p>optional password form field protects the link</p>
                     <code>
                         curl -X POST "{url}/api/file" --header "Content-Type:
                         multipart/form-data" --header "Authorization: Bearer{" "}
@@ -104,6 +113,14 @@ app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
                                 placeholder="100"
                             />
                         </label>
+                        <label>
+                            Password (optional)
+                            <input
+                                type="password"
+                                name="password"
+                                placeholder="leave empty for a public link"
+                            />
+                        </label>
                         <input type="file" name="file" required />
 
                         <button type="submit" class="btn">Upload</button>
@@ -119,6 +136,14 @@ app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
                                 name="age"
                                 defaultValue="1d"
                                 placeholder="10,10s,10m,10h,10d"
+                            />
+                        </label>
+                        <label>
+                            Password (optional)
+                            <input
+                                type="password"
+                                name="password"
+                                placeholder="leave empty for a public link"
                             />
                         </label>
                         <textarea
@@ -154,32 +179,85 @@ app.post("/file", htmlAuth, limiter(), async (c) => {
     }
 });
 
+const FileInfo = (props: {
+    file: Awaited<ReturnType<typeof getFileInfo>>;
+    downloadUrl: string;
+}) => (
+    <article class="card">
+        <header>
+            <h4>filename: {props.file.filename}</h4>
+        </header>
+        <p>Download count: {props.file.downloadCount}</p>
+        <p>Max download count: {props.file.maxDownloadCount}</p>
+        <p>
+            Expires at:{" "}
+            <span id="expires-at" data-time={props.file.expiresAt}>
+                {/* this will be replaced by client local time if js isn't blocked */}
+                {formatDatetime(props.file.expiresAt)}
+            </span>
+        </p>
+        <footer class="card-footer">
+            <a href={props.downloadUrl} class="btn">Download</a>
+        </footer>
+        <script src="/static/clientTimestamp.js" type="module"></script>
+    </article>
+);
+
+const FilePasswordForm = (props: { error?: string }) => (
+    <article class="card">
+        <header>
+            <h4>Password protected</h4>
+        </header>
+        {props.error && <p class="result">{props.error}</p>}
+        <form method="post">
+            <label>
+                Password <input type="password" name="password" required />
+            </label>
+            <button type="submit" class="btn">Unlock</button>
+        </form>
+    </article>
+);
+
 app.get("/file/:id", async (c) => {
     const id = c.req.param("id");
 
     try {
-        const { filename, downloadCount, maxDownloadCount, expiresAt } =
-            await getFileInfo(id);
+        const file = await getFileInfo(id);
+
+        if (file.password) {
+            return c.render(<FilePasswordForm />);
+        }
 
         return c.render(
-            <article class="card">
-                <header>
-                    <h4>filename: {filename}</h4>
-                </header>
-                <p>Download count: {downloadCount}</p>
-                <p>Max download count: {maxDownloadCount}</p>
-                <p>
-                    Expires at:{" "}
-                    <span id="expires-at" data-time={expiresAt}>
-                        {/* this will be replaced by client local time if js isn't blocked */}
-                        {formatDatetime(expiresAt)}
-                    </span>
-                </p>
-                <footer class="card-footer">
-                    <a href={`/api/file/${id}`} class="btn">Download</a>
-                </footer>
-                <script src="/static/clientTimestamp.js" type="module"></script>
-            </article>
+            <FileInfo file={file} downloadUrl={`/api/file/${id}`} />
+        );
+    } catch (error) {
+        if (error instanceof HttpError) {
+            return c.render(<p>{error.message}</p>, error.status);
+        }
+        return c.render(<p>Something went wrong</p>, 500);
+    }
+});
+
+app.post("/file/:id", async (c) => {
+    const id = c.req.param("id");
+
+    try {
+        const file = await getFileInfo(id);
+        if (!file.password) return c.redirect(`/file/${id}`, 303);
+
+        const body = await c.req.parseBody();
+        const password = body["password"] as string;
+
+        if (!(await argon2.verify(file.password, password ?? ""))) {
+            return c.render(<FilePasswordForm error="Wrong password" />, 403);
+        }
+
+        return c.render(
+            <FileInfo
+                file={file}
+                downloadUrl={`/api/file/${id}?access=${await fileAccessToken(file.url)}`}
+            />
         );
     } catch (error) {
         if (error instanceof HttpError) {
@@ -207,26 +285,72 @@ app.post("/text", htmlAuth, limiter(), async (c) => {
     }
 });
 
+const TextContent = (props: {
+    text: Awaited<ReturnType<typeof getText>>;
+}) => (
+    <article class="card">
+        <pre style="white-space:pre-wrap;word-break:break-word;max-width:100%;">
+            {props.text.content}
+        </pre>
+        <p>
+            Expires at:{" "}
+            <span id="expires-at" data-time={props.text.expiresAt}>
+                {formatDatetime(props.text.expiresAt)}
+            </span>
+        </p>
+        <script src="/static/clientTimestamp.js" type="module"></script>
+    </article>
+);
+
+const TextPasswordForm = (props: { error?: string }) => (
+    <article class="card">
+        <header>
+            <h4>Password protected</h4>
+        </header>
+        {props.error && <p class="result">{props.error}</p>}
+        <form method="post">
+            <label>
+                Password <input type="password" name="password" required />
+            </label>
+            <button type="submit" class="btn">Unlock</button>
+        </form>
+    </article>
+);
+
 app.get("/text/:id", async (c) => {
     const id = c.req.param("id");
 
     try {
-        const { content, expiresAt } = await getText(id);
+        const text = await getText(id);
 
-        return c.render(
-            <article class="card">
-                <pre style="white-space:pre-wrap;word-break:break-word;max-width:100%;">
-                    {content}
-                </pre>
-                <p>
-                    Expires at:{" "}
-                    <span id="expires-at" data-time={expiresAt}>
-                        {formatDatetime(expiresAt)}
-                    </span>
-                </p>
-                <script src="/static/clientTimestamp.js" type="module"></script>
-            </article>
-        );
+        if (text.password) {
+            return c.render(<TextPasswordForm />);
+        }
+
+        return c.render(<TextContent text={text} />);
+    } catch (error) {
+        if (error instanceof HttpError) {
+            return c.render(<p>{error.message}</p>, error.status);
+        }
+        return c.render(<p>Something went wrong</p>, 500);
+    }
+});
+
+app.post("/text/:id", async (c) => {
+    const id = c.req.param("id");
+
+    try {
+        const text = await getText(id);
+        if (!text.password) return c.redirect(`/text/${id}`, 303);
+
+        const body = await c.req.parseBody();
+        const password = body["password"] as string;
+
+        if (!(await argon2.verify(text.password, password ?? ""))) {
+            return c.render(<TextPasswordForm error="Wrong password" />, 403);
+        }
+
+        return c.render(<TextContent text={text} />);
     } catch (error) {
         if (error instanceof HttpError) {
             return c.render(<p>{error.message}</p>, error.status);

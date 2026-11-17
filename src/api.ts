@@ -24,7 +24,7 @@ api.get("/file/:id", async (c) => {
     const id = c.req.param("id");
 
     try {
-        const { data, filename } = await getFile(id);
+        const { data, filename } = await getFile(id, c.req.query("access"));
         return c.body(data, 200, {
             "Content-Type": "application/octet-stream",
             "Content-Disposition": `attachment; filename="${filename}"`,
