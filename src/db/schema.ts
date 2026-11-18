@@ -43,6 +43,7 @@ export const users = t.sqliteTable("users", {
     createdAt: t.integer("created_at").default(sql`(strftime('%s','now'))`),
     role: t.text("role").notNull().default("user"),
     blockedAt: t.integer("blocked_at"), // UNIX timestamp, null = not blocked
+    storageQuota: t.integer("storage_quota"), // bytes, null = DEFAULT_STORAGE_QUOTA
 });
 
 // One-time signup codes

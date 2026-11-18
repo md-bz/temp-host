@@ -19,8 +19,9 @@ No test, lint, typecheck, or format scripts exist.
 - **API router**: `src/api.ts` — `POST /api/file` (auth+rate-limited; optional `password` form field), `GET /api/file/:id` (public, stream download; password-protected files need `?access=<token>`)
 - **Protected shares**: `files.password` and `texts.password` are argon2 hashes (empty = public). `/file/:id` shows an unlock form; a correct password renders the info page with a 1-hour JWT `access` token in the download link (`GET /api/file/:id?access=...`, enforced by `canAccessFile` in `src/helper.ts`). `/text/:id` has the same unlock form; the unlock POST just renders the content (no token needed).
 - **Auth**: JWT with a 7-day `exp` (cookie expires with it; tokens without `exp` are rejected). Two middleware: `htmlAuth` (reads token from cookie), `jsonAuth` (reads from `Authorization: Bearer`). Both reject blocked users (`users.blocked_at`). Set `SKIP_AUTH=true` to disable.
-- **Admin**: `src/admin.tsx` — `/admin` dashboard (guarded by `adminAuth`, requires `users.role = 'admin'`): user list with file/text counts and block/unblock, search by name/email (`?q=`) and paginated 20 per page (`?page=`); block redirects back to the same search/page. Uploads store the uploader in `files.user_id`. Also toggles signup mode (`POST /admin/signups`) and creates one-time invite codes (`POST /admin/invites`, nanoid).
+- **Admin**: `src/admin.tsx` — `/admin` dashboard (guarded by `adminAuth`, requires `users.role = 'admin'`): user list with file/text counts, storage usage/quota and block/unblock, search by name/email (`?q=`) and paginated 20 per page (`?page=`); block redirects back to the same search/page. Uploads store the uploader in `files.user_id`. Also toggles signup mode (`POST /admin/signups`) and creates one-time invite codes (`POST /admin/invites`, nanoid).
 - **Signup modes**: `settings` is a key/value table (`key` unique, `value` text). `signupRestricted` holds `"true"`/`"false"`; add new settings as rows. When restricted, `/auth/signup` requires an unused `invites.code`; the code is marked used atomically after the user is created.
+- **Storage quota**: `users.storage_quota` (bytes; null = `DEFAULT_STORAGE_QUOTA` MB from env, unset = unlimited). `saveFile` sums the uploader's `files.size` before writing and returns 413 when it would exceed the quota; deleting or expiring files frees it. Admin sets per-user quotas in the users table (`POST /admin/quota/:id`, empty field = default).
 - **Profile**: `src/profile.tsx` — `/profile` (htmlAuth): view/edit name, email, password. Changing email or password requires the current password. `/profile/files` lists the user's own files and saved texts (`files.user_id` / `texts.user_id`) and lets them delete either; each list is paginated separately (`?page=` files, `?tpage=` texts, 20 per page).
 - **Pagination**: `src/pagination.tsx` — `pageParam`/`pageCount`/`Pager`; pages are 1-based, out-of-range pages clamp to the last one
 - **Rate limiting**: Redis-backed (`hono-rate-limiter` + `rate-limit-redis`). Skip with `RATE_LIMIT_SKIP=true`. Keyed by JWT `id` (or `"everyone"` if no JWT).
@@ -30,7 +31,7 @@ No test, lint, typecheck, or format scripts exist.
 
 ## Environment (`.env`)
 
-Key vars: `DATABASE_URL` (file:./db.sqlite), `JWT_SECRET`, `REDIS_URL`, `SKIP_AUTH`, `MAX_AGE`, `MAX_DOWNLOAD_COUNT`, `MAX_FILE_SIZE` (MB), `RATE_LIMIT_*`, `ADMIN_EMAIL` + `ADMIN_PASSWORD` (creates/promotes that account to admin on startup)
+Key vars: `DATABASE_URL` (file:./db.sqlite), `JWT_SECRET`, `REDIS_URL`, `SKIP_AUTH`, `MAX_AGE`, `MAX_DOWNLOAD_COUNT`, `MAX_FILE_SIZE` (MB), `DEFAULT_STORAGE_QUOTA` (MB), `RATE_LIMIT_*`, `ADMIN_EMAIL` + `ADMIN_PASSWORD` (creates/promotes that account to admin on startup)
 
 ## Docker
 

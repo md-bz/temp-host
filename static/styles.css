@@ -369,6 +369,22 @@ table form [type="submit"] {
     margin: 0;
 }
 
+.quota {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+}
+
+.quota input {
+    width: 5rem;
+    margin: 0;
+}
+
+.quota .btn {
+    width: auto;
+}
+
 table td:last-child {
     text-align: center;
 }

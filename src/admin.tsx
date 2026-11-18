@@ -4,7 +4,12 @@ import { nanoid } from "nanoid";
 import { db } from "./db/db";
 import { files, invites, texts, users } from "./db/schema";
 import { adminAuth } from "./auth";
-import { signupsRestricted, setSignupsRestricted } from "./helper";
+import {
+    defaultStorageQuota,
+    formatSize,
+    setSignupsRestricted,
+    signupsRestricted,
+} from "./helper";
 import { PAGE_SIZE, Pager, pageCount, pageParam } from "./pagination";
 
 export const adminRouter = new Hono();
@@ -33,6 +38,8 @@ adminRouter.get("/", async (c) => {
             blockedAt: users.blockedAt,
             uploads: sql<number>`cast(count(distinct ${files.id}) as integer)`,
             texts: sql<number>`cast(count(distinct ${texts.id}) as integer)`,
+            used: sql<number>`cast((select coalesce(sum(size), 0) from files where files.user_id = users.id) as integer)`,
+            storageQuota: users.storageQuota,
         })
         .from(users)
         .leftJoin(files, eq(files.userId, users.id))
@@ -73,6 +80,16 @@ adminRouter.get("/", async (c) => {
                         </a>
                     )}
                 </form>
+                <p>
+                    <small>
+                        Default storage quota:{" "}
+                        {defaultStorageQuota === Infinity
+                            ? "unlimited"
+                            : formatSize(defaultStorageQuota)}{" "}
+                        (DEFAULT_STORAGE_QUOTA). Leave a field empty to use
+                        it.
+                    </small>
+                </p>
                 {rows.length === 0 ? (
                     <p>No users match “{q}”.</p>
                 ) : (
@@ -85,6 +102,7 @@ adminRouter.get("/", async (c) => {
                                 <th>Role</th>
                                 <th>Files</th>
                                 <th>Texts</th>
+                                <th>Storage</th>
                                 <th>Status</th>
                                 <th></th>
                             </tr>
@@ -97,6 +115,48 @@ adminRouter.get("/", async (c) => {
                                     <td data-label="Role">{u.role}</td>
                                     <td data-label="Files">{u.uploads}</td>
                                     <td data-label="Texts">{u.texts}</td>
+                                    <td data-label="Storage">
+                                        <small>
+                                            {formatSize(u.used)} /{" "}
+                                            {u.storageQuota
+                                                ? formatSize(u.storageQuota)
+                                                : "default"}
+                                        </small>
+                                        <form
+                                            action={`/admin/quota/${u.id}`}
+                                            method="post"
+                                            class="quota"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="back"
+                                                value={new URL(c.req.url).search}
+                                            />
+                                            <input
+                                                type="number"
+                                                name="quota"
+                                                min="1"
+                                                step="1"
+                                                value={
+                                                    u.storageQuota
+                                                        ? Math.round(
+                                                              u.storageQuota /
+                                                                  1024 /
+                                                                  1024
+                                                          )
+                                                        : ""
+                                                }
+                                                placeholder="MB"
+                                                aria-label="Storage quota in MB, empty uses the default"
+                                            />
+                                            <button
+                                                type="submit"
+                                                class="btn btn-sm"
+                                            >
+                                                Save
+                                            </button>
+                                        </form>
+                                    </td>
                                     <td data-label="Status">
                                         {u.blockedAt ? "blocked" : "active"}
                                     </td>
@@ -185,6 +245,31 @@ adminRouter.post("/signups", async (c) => {
 adminRouter.post("/invites", async (c) => {
     await db.insert(invites).values({ code: nanoid(10) });
     return c.redirect("/admin", 303);
+});
+
+adminRouter.post("/quota/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+    const body = await c.req.parseBody();
+    const back =
+        typeof body.back === "string" && body.back.startsWith("?")
+            ? body.back
+            : "";
+
+    const mb = Number(body.quota);
+    const storageQuota =
+        typeof body.quota === "string" &&
+        body.quota.trim() !== "" &&
+        Number.isFinite(mb) &&
+        mb > 0
+            ? Math.round(mb * 1024 * 1024)
+            : null;
+
+    await db
+        .update(users)
+        .set({ storageQuota })
+        .where(eq(users.id, id));
+
+    return c.redirect(`/admin${back}`, 303);
 });
 
 adminRouter.post("/block/:id", async (c) => {

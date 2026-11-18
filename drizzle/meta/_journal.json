@@ -43,6 +43,13 @@
       "when": 1794905891706,
       "tag": "0005_modern_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794993241419,
+      "tag": "0006_moaning_apocalypse",
+      "breakpoints": true
     }
   ]
 }

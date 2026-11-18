@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `storage_quota` integer;

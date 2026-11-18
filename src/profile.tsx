@@ -5,6 +5,7 @@ import * as argon2 from "argon2";
 import { db } from "./db/db";
 import { files, texts, users } from "./db/schema";
 import { htmlAuth } from "./auth";
+import { formatSize } from "./helper";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { PAGE_SIZE, Pager, pageCount, pageParam } from "./pagination";
 //@ts-ignore
@@ -119,11 +120,6 @@ profileRouter.get("/files", async (c) => {
         .limit(PAGE_SIZE)
         .offset((textsPage - 1) * PAGE_SIZE);
 
-    const size = (bytes: number) =>
-        bytes < 1024 * 1024
-            ? `${(bytes / 1024).toFixed(1)} KB`
-            : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-
     return c.render(
         <>
         <article class="card wide">
@@ -155,7 +151,7 @@ profileRouter.get("/files", async (c) => {
                                                 {f.filename}
                                             </a>
                                         </td>
-                                        <td data-label="Size">{size(f.size)}</td>
+                                        <td data-label="Size">{formatSize(f.size)}</td>
                                         <td data-label="Downloads">
                                             {f.downloadCount}/
                                             {f.maxDownloadCount}

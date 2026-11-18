@@ -3,14 +3,14 @@ import * as argon2 from "argon2";
 import { nanoid } from "nanoid";
 import { sign, verify } from "hono/jwt";
 import { db } from "./db/db";
-import { files, settings, texts } from "./db/schema";
+import { files, settings, texts, users } from "./db/schema";
 import { join } from "path";
 import { ContentfulStatusCode } from "hono/utils/http-status";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export function toUnixDate(
     input?: string | number,
-    defaultTime: number = 0
+    defaultTime: number = 0,
 ): number {
     if (typeof input === "number") {
         return input;
@@ -58,6 +58,17 @@ const maxFileSizeBytes = process.env.MAX_FILE_SIZE
     ? Number(process.env.MAX_FILE_SIZE) * 1024 * 1024
     : Infinity;
 
+export const defaultStorageQuota = process.env.DEFAULT_STORAGE_QUOTA
+    ? Number(process.env.DEFAULT_STORAGE_QUOTA) * 1024 * 1024
+    : Infinity;
+
+export const formatSize = (bytes: number) =>
+    bytes === 0
+        ? "0 B"
+        : bytes < 1024 * 1024
+          ? `${(bytes / 1024).toFixed(1)} KB`
+          : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
 export class HttpError extends Error {
     status: ContentfulStatusCode;
 
@@ -69,7 +80,7 @@ export class HttpError extends Error {
 
 export async function saveFile(
     body: { [key: string]: string | File },
-    userId?: number
+    userId?: number,
 ) {
     const file = body["file"] as File;
     const downloadCount = body["downloadCount"] as string;
@@ -81,6 +92,31 @@ export async function saveFile(
 
     if (file.size > maxFileSizeBytes) {
         throw new HttpError("file too large", 413);
+    }
+
+    if (userId) {
+        const user = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, userId))
+            .get();
+        const quota = user?.storageQuota ?? defaultStorageQuota;
+        const used = Number(
+            (
+                await db
+                    .select({ n: sql<number>`coalesce(sum(${files.size}), 0)` })
+                    .from(files)
+                    .where(eq(files.userId, userId))
+            ).at(0)?.n ?? 0,
+        );
+
+        // shortcut: concurrent uploads can both pass this check, fine for one instance
+        if (used + file.size > quota) {
+            throw new HttpError(
+                `storage quota exceeded (${formatSize(used)} of ${formatSize(quota)} used)`,
+                413,
+            );
+        }
     }
 
     const data = await file.bytes();
@@ -105,7 +141,7 @@ export async function saveFile(
         expiresAt: Date.now() + Math.min(maxAge, toUnixDate(age, Infinity)),
         maxDownloadCount: Math.min(
             maxDownloadCount,
-            downloadCount ? Number(downloadCount) : Infinity
+            downloadCount ? Number(downloadCount) : Infinity,
         ),
         url,
         storagePath: storagePath,
@@ -132,13 +168,13 @@ export async function getFileInfo(id: string) {
 export async function fileAccessToken(url: string) {
     return await sign(
         { file: url, exp: Math.floor(Date.now() / 1000) + 60 * 60 },
-        process.env.JWT_SECRET!
+        process.env.JWT_SECRET!,
     );
 }
 
 export async function canAccessFile(
     file: { url: string; password: string | null },
-    accessToken?: string
+    accessToken?: string,
 ) {
     if (!file.password) return true;
     if (!accessToken) return false;
@@ -176,7 +212,7 @@ export async function getFile(id: string, accessToken?: string) {
 
 export async function saveText(
     body: { [key: string]: string | File },
-    userId?: number
+    userId?: number,
 ) {
     const content = body["content"] as string;
     const age = body["age"] as string;
