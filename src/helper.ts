@@ -78,6 +78,17 @@ export class HttpError extends Error {
     }
 }
 
+export async function storageUsed(userId: number) {
+    return Number(
+        (
+            await db
+                .select({ n: sql<number>`coalesce(sum(${files.size}), 0)` })
+                .from(files)
+                .where(eq(files.userId, userId))
+        ).at(0)?.n ?? 0,
+    );
+}
+
 export async function saveFile(
     body: { [key: string]: string | File },
     userId?: number,
@@ -101,14 +112,7 @@ export async function saveFile(
             .where(eq(users.id, userId))
             .get();
         const quota = user?.storageQuota ?? defaultStorageQuota;
-        const used = Number(
-            (
-                await db
-                    .select({ n: sql<number>`coalesce(sum(${files.size}), 0)` })
-                    .from(files)
-                    .where(eq(files.userId, userId))
-            ).at(0)?.n ?? 0,
-        );
+        const used = await storageUsed(userId);
 
         // shortcut: concurrent uploads can both pass this check, fine for one instance
         if (used + file.size > quota) {

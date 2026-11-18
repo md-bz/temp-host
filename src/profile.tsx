@@ -5,7 +5,7 @@ import * as argon2 from "argon2";
 import { db } from "./db/db";
 import { files, texts, users } from "./db/schema";
 import { htmlAuth } from "./auth";
-import { formatSize } from "./helper";
+import { defaultStorageQuota, formatSize, storageUsed } from "./helper";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { PAGE_SIZE, Pager, pageCount, pageParam } from "./pagination";
 //@ts-ignore
@@ -82,13 +82,16 @@ profileRouter.get("/files", async (c) => {
     const user = await currentUser(c);
     if (!user) return c.redirect("/auth/login", 302);
 
+    const used = await storageUsed(user.id);
+    const quota = user.storageQuota ?? defaultStorageQuota;
+
     const filesTotal = Number(
         (
             await db
                 .select({ n: count() })
                 .from(files)
                 .where(eq(files.userId, user.id))
-        ).at(0)?.n ?? 0
+        ).at(0)?.n ?? 0,
     );
     const filesPages = pageCount(filesTotal);
     const filesPage = Math.min(pageParam(c, "page"), filesPages);
@@ -107,7 +110,7 @@ profileRouter.get("/files", async (c) => {
                 .select({ n: count() })
                 .from(texts)
                 .where(eq(texts.userId, user.id))
-        ).at(0)?.n ?? 0
+        ).at(0)?.n ?? 0,
     );
     const textsPages = pageCount(textsTotal);
     const textsPage = Math.min(pageParam(c, "tpage"), textsPages);
@@ -122,138 +125,150 @@ profileRouter.get("/files", async (c) => {
 
     return c.render(
         <>
-        <article class="card wide">
-            <h4>My files</h4>
-            {rows.length === 0 ? (
-                <p>No files uploaded yet.</p>
-            ) : (
-                <div style="overflow-x:auto">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>File</th>
-                                <th>Size</th>
-                                <th>Downloads</th>
-                                <th>Expires</th>
-                                <th>Status</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((f) => {
-                                const expired =
-                                    f.expiresAt < Date.now() ||
-                                    f.downloadCount >= f.maxDownloadCount;
-                                return (
-                                    <tr>
-                                        <td data-label="File">
-                                            <a href={`/file/${f.url}`}>
-                                                {f.filename}
-                                            </a>
-                                        </td>
-                                        <td data-label="Size">{formatSize(f.size)}</td>
-                                        <td data-label="Downloads">
-                                            {f.downloadCount}/
-                                            {f.maxDownloadCount}
-                                        </td>
-                                        <td data-label="Expires">
-                                            {formatDatetime(f.expiresAt)}
-                                        </td>
-                                        <td data-label="Status">
-                                            {expired ? "expired" : "active"}
-                                        </td>
-                                        <td>
-                                            <form
-                                                action={`/profile/files/${f.id}/delete`}
-                                                method="post"
-                                                onsubmit="return confirm('Delete this file?')"
-                                            >
-                                                <button
-                                                    type="submit"
-                                                    class="btn btn-sm"
+            <article class="card wide">
+                <h4>My files</h4>
+                <p>
+                    <strong>
+                        Storage: {formatSize(used)} of{" "}
+                        {quota === Infinity ? "unlimited" : formatSize(quota)}{" "}
+                        used
+                    </strong>
+                </p>
+                {rows.length === 0 ? (
+                    <p>No files uploaded yet.</p>
+                ) : (
+                    <div style="overflow-x:auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>File</th>
+                                    <th>Size</th>
+                                    <th>Downloads</th>
+                                    <th>Expires</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((f) => {
+                                    const expired =
+                                        f.expiresAt < Date.now() ||
+                                        f.downloadCount >= f.maxDownloadCount;
+                                    return (
+                                        <tr>
+                                            <td data-label="File">
+                                                <a href={`/file/${f.url}`}>
+                                                    {f.filename}
+                                                </a>
+                                            </td>
+                                            <td data-label="Size">
+                                                {formatSize(f.size)}
+                                            </td>
+                                            <td data-label="Downloads">
+                                                {f.downloadCount}/
+                                                {f.maxDownloadCount}
+                                            </td>
+                                            <td data-label="Expires">
+                                                {formatDatetime(f.expiresAt)}
+                                            </td>
+                                            <td data-label="Status">
+                                                {expired ? "expired" : "active"}
+                                            </td>
+                                            <td>
+                                                <form
+                                                    action={`/profile/files/${f.id}/delete`}
+                                                    method="post"
+                                                    onsubmit="return confirm('Delete this file?')"
                                                 >
-                                                    Delete
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-            <Pager
-                url={c.req.url}
-                param="page"
-                page={filesPage}
-                pages={filesPages}
-            />
-        </article>
-        <article class="card wide">
-            <h4>My texts</h4>
-            {savedTexts.length === 0 ? (
-                <p>No texts saved yet.</p>
-            ) : (
-                <div style="overflow-x:auto">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Text</th>
-                                <th>Created</th>
-                                <th>Expires</th>
-                                <th>Status</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {savedTexts.map((t) => {
-                                const expired = t.expiresAt < Date.now();
-                                return (
-                                    <tr>
-                                        <td data-label="Text">
-                                            <a href={`/text/${t.url}`}>
-                                                {t.content.slice(0, 60)}
-                                                {t.content.length > 60 && "…"}
-                                            </a>
-                                        </td>
-                                        <td data-label="Created">
-                                            {formatDatetime(t.createdAt * 1000)}
-                                        </td>
-                                        <td data-label="Expires">
-                                            {formatDatetime(t.expiresAt)}
-                                        </td>
-                                        <td data-label="Status">
-                                            {expired ? "expired" : "active"}
-                                        </td>
-                                        <td>
-                                            <form
-                                                action={`/profile/texts/${t.id}/delete`}
-                                                method="post"
-                                                onsubmit="return confirm('Delete this text?')"
-                                            >
-                                                <button
-                                                    type="submit"
-                                                    class="btn btn-sm"
+                                                    <button
+                                                        type="submit"
+                                                        class="btn btn-sm"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                <Pager
+                    url={c.req.url}
+                    param="page"
+                    page={filesPage}
+                    pages={filesPages}
+                />
+            </article>
+            <article class="card wide">
+                <h4>My texts</h4>
+                {savedTexts.length === 0 ? (
+                    <p>No texts saved yet.</p>
+                ) : (
+                    <div style="overflow-x:auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Text</th>
+                                    <th>Created</th>
+                                    <th>Expires</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {savedTexts.map((t) => {
+                                    const expired = t.expiresAt < Date.now();
+                                    return (
+                                        <tr>
+                                            <td data-label="Text">
+                                                <a href={`/text/${t.url}`}>
+                                                    {t.content.slice(0, 60)}
+                                                    {t.content.length > 60 &&
+                                                        "…"}
+                                                </a>
+                                            </td>
+                                            <td data-label="Created">
+                                                {formatDatetime(
+                                                    t.createdAt * 1000,
+                                                )}
+                                            </td>
+                                            <td data-label="Expires">
+                                                {formatDatetime(t.expiresAt)}
+                                            </td>
+                                            <td data-label="Status">
+                                                {expired ? "expired" : "active"}
+                                            </td>
+                                            <td>
+                                                <form
+                                                    action={`/profile/texts/${t.id}/delete`}
+                                                    method="post"
+                                                    onsubmit="return confirm('Delete this text?')"
                                                 >
-                                                    Delete
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-            <Pager
-                url={c.req.url}
-                param="tpage"
-                page={textsPage}
-                pages={textsPages}
-            />
-        </article>
+                                                    <button
+                                                        type="submit"
+                                                        class="btn btn-sm"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                <Pager
+                    url={c.req.url}
+                    param="tpage"
+                    page={textsPage}
+                    pages={textsPages}
+                />
+            </article>
         </>,
     );
 });
@@ -291,10 +306,13 @@ profileRouter.post("/files/:id/delete", async (c) => {
                 return c.render(
                     <article class="card">
                         <h4>Could not delete file</h4>
-                        <p>{file.filename} could not be removed, nothing was deleted.</p>
+                        <p>
+                            {file.filename} could not be removed, nothing was
+                            deleted.
+                        </p>
                         <a href="/profile/files">Back to files</a>
                     </article>,
-                    500
+                    500,
                 );
             }
         }
