@@ -155,6 +155,24 @@ export async function saveFile(
 
     return url;
 }
+export async function deleteAllFiles(userId: number) {
+    const rows = await db.select().from(files).where(eq(files.userId, userId));
+
+    for (const file of rows) {
+        try {
+            await fs.unlink(file.storagePath);
+        } catch (error) {
+            // already gone from disk: safe to drop the row
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+                throw new HttpError("file could not be removed", 500);
+            }
+        }
+        await db.delete(files).where(eq(files.id, file.id));
+    }
+
+    return rows.length;
+}
+
 export async function getFileInfo(id: string) {
     const file = await db.select().from(files).where(eq(files.url, id)).get();
 

@@ -5,7 +5,13 @@ import * as argon2 from "argon2";
 import { db } from "./db/db";
 import { files, texts, users } from "./db/schema";
 import { htmlAuth } from "./auth";
-import { defaultStorageQuota, formatSize, storageUsed } from "./helper";
+import {
+    defaultStorageQuota,
+    deleteAllFiles,
+    formatSize,
+    HttpError,
+    storageUsed,
+} from "./helper";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { PAGE_SIZE, Pager, pageCount, pageParam } from "./pagination";
 //@ts-ignore
@@ -201,6 +207,21 @@ profileRouter.get("/files", async (c) => {
                     page={filesPage}
                     pages={filesPages}
                 />
+                {filesTotal > 0 && (
+                    <form
+                        action="/profile/files/delete-all"
+                        method="post"
+                        onsubmit="return confirm('Delete all your files? This cannot be undone.')"
+                    >
+                        <button
+                            type="submit"
+                            class="btn btn-sm"
+                            style="margin-top:1rem"
+                        >
+                            Delete all files
+                        </button>
+                    </form>
+                )}
             </article>
             <article class="card wide">
                 <h4>My texts</h4>
@@ -271,6 +292,29 @@ profileRouter.get("/files", async (c) => {
             </article>
         </>,
     );
+});
+
+profileRouter.post("/files/delete-all", async (c) => {
+    const user = await currentUser(c);
+    if (!user) return c.redirect("/auth/login", 302);
+
+    try {
+        await deleteAllFiles(user.id);
+    } catch (error) {
+        if (error instanceof HttpError) {
+            return c.render(
+                <article class="card">
+                    <h4>Could not delete files</h4>
+                    <p>{error.message}, the remaining files were kept.</p>
+                    <a href="/profile/files">Back to files</a>
+                </article>,
+                500,
+            );
+        }
+        throw error;
+    }
+
+    return c.redirect("/profile/files", 303);
 });
 
 profileRouter.post("/texts/:id/delete", async (c) => {
