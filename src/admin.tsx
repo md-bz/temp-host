@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { count, desc, eq, isNull, sql } from "drizzle-orm";
+import { count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "./db/db";
 import { files, invites, texts, users } from "./db/schema";
@@ -12,8 +12,14 @@ export const adminRouter = new Hono();
 adminRouter.use("*", adminAuth);
 
 adminRouter.get("/", async (c) => {
+    const q = c.req.query("q")?.trim() || undefined;
+    const filter = q
+        ? or(like(users.name, `%${q}%`), like(users.email, `%${q}%`))
+        : undefined;
+
     const total = Number(
-        (await db.select({ n: count() }).from(users)).at(0)?.n ?? 0
+        (await db.select({ n: count() }).from(users).where(filter)).at(0)?.n ??
+            0
     );
     const pages = pageCount(total);
     const page = Math.min(pageParam(c, "page"), pages);
@@ -31,6 +37,7 @@ adminRouter.get("/", async (c) => {
         .from(users)
         .leftJoin(files, eq(files.userId, users.id))
         .leftJoin(texts, eq(texts.userId, users.id))
+        .where(filter)
         .groupBy(users.id)
         .orderBy(desc(users.id))
         .limit(PAGE_SIZE)
@@ -50,6 +57,25 @@ adminRouter.get("/", async (c) => {
         <>
             <article class="card wide">
                 <h2>Users</h2>
+                <form method="get" class="search">
+                    <input
+                        type="search"
+                        name="q"
+                        value={q}
+                        placeholder="Search name or email"
+                    />
+                    <button type="submit" class="btn btn-sm">
+                        Search
+                    </button>
+                    {q && (
+                        <a href="/admin" class="btn btn-sm">
+                            Clear
+                        </a>
+                    )}
+                </form>
+                {rows.length === 0 ? (
+                    <p>No users match “{q}”.</p>
+                ) : (
                 <div style="overflow-x:auto">
                     <table>
                         <thead>
@@ -80,6 +106,11 @@ adminRouter.get("/", async (c) => {
                                                 action={`/admin/block/${u.id}`}
                                                 method="post"
                                             >
+                                                <input
+                                                    type="hidden"
+                                                    name="back"
+                                                    value={new URL(c.req.url).search}
+                                                />
                                                 <button
                                                     type="submit"
                                                     class="btn btn-sm"
@@ -96,6 +127,7 @@ adminRouter.get("/", async (c) => {
                         </tbody>
                     </table>
                 </div>
+                )}
                 <Pager
                     url={c.req.url}
                     param="page"
@@ -157,13 +189,21 @@ adminRouter.post("/invites", async (c) => {
 
 adminRouter.post("/block/:id", async (c) => {
     const id = Number(c.req.param("id"));
+    // stay on the same search/page after the action
+    const body = await c.req.parseBody();
+    const back =
+        typeof body.back === "string" && body.back.startsWith("?")
+            ? body.back
+            : "";
+    const done = () => c.redirect(`/admin${back}`, 303);
+
     if (id === c.get("jwtPayload")?.id) {
-        return c.redirect("/admin", 303);
+        return done();
     }
 
     const user = await db.select().from(users).where(eq(users.id, id)).get();
     if (!user) {
-        return c.redirect("/admin", 303);
+        return done();
     }
 
     await db
@@ -171,5 +211,5 @@ adminRouter.post("/block/:id", async (c) => {
         .set({ blockedAt: user.blockedAt ? null : Date.now() })
         .where(eq(users.id, id));
 
-    return c.redirect("/admin", 303);
+    return done();
 });
