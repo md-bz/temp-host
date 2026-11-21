@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import QRCode from "qrcode";
 import { api } from "./api";
 import { Layout } from "./components/Layout";
 import { serveStatic } from "hono/bun";
@@ -160,15 +161,47 @@ app.on("GET", ["/", "/file"], htmlAuth, async (c) => {
     );
 });
 
+async function shareResult(origin: string, message: string, path: string) {
+    const link = new URL(path, origin).toString();
+    const qr = await QRCode.toString(link, { type: "svg", margin: 1 });
+
+    return (
+        <article class="card">
+            <p>{message}</p>
+            <div class="share-body">
+                <div class="share-link">
+                    <input
+                        type="text"
+                        value={link}
+                        readonly
+                        aria-label="Share link"
+                    />
+                    <button type="button" class="btn btn-sm" data-copy={link}>
+                        Copy link
+                    </button>
+                </div>
+                <div
+                    class="qr"
+                    role="img"
+                    aria-label={`QR code for ${link}`}
+                    dangerouslySetInnerHTML={{ __html: qr }}
+                />
+            </div>
+            <script src="/static/result.js" type="module"></script>
+        </article>
+    );
+}
+
 app.post("/file", htmlAuth, limiter(), async (c) => {
     const body = await c.req.parseBody();
     try {
         const url = await saveFile(body, c.get("jwtPayload")?.id);
         return c.render(
-            <p class="result">
-                Your file is ready to download at{" "}
-                <a href={`/file/${url}`}>{url}</a>
-            </p>
+            await shareResult(
+                new URL(c.req.url).origin,
+                "Your file is ready to download at",
+                `/file/${url}`,
+            ),
         );
     } catch (e) {
         if (e instanceof HttpError) {
@@ -272,10 +305,11 @@ app.post("/text", htmlAuth, limiter(), async (c) => {
     try {
         const url = await saveText(body, c.get("jwtPayload")?.id);
         return c.render(
-            <p class="result">
-                Your text is available at{" "}
-                <a href={`/text/${url}`}>{url}</a>
-            </p>
+            await shareResult(
+                new URL(c.req.url).origin,
+                "Your text is available at",
+                `/text/${url}`,
+            ),
         );
     } catch (e) {
         if (e instanceof HttpError) {

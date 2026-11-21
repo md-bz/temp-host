@@ -534,6 +534,44 @@ footer.card-footer {
     word-break: break-all;
 }
 
+.share-body {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.share-link {
+    display: flex;
+    flex: 1 1 16rem;
+    min-width: 0;
+    gap: 0.5rem;
+}
+
+.share-link input {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+.share-link .btn {
+    flex: none;
+}
+
+.qr {
+    flex: none;
+    background: #fff;
+    border-radius: var(--radius-sm);
+    padding: 0.4rem;
+    line-height: 0;
+}
+
+.qr svg {
+    display: block;
+    width: 120px;
+    height: 120px;
+}
+
 @keyframes fadeUp {
     from {
         opacity: 0;

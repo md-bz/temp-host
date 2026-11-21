@@ -28,6 +28,7 @@ No test, lint, typecheck, or format scripts exist.
 - **CAPTCHA**: Redis-backed, generated with `captcha-canvas` + `@napi-rs/canvas`. Requires fonts on system (`fontconfig` in Docker).
 - **Cleanup cron**: `src/cron.ts` — deletes expired/over-downloaded files daily at 5:00 AM.
 - **File storage**: `./files/` directory. DB records in SQLite `files` table.
+- **Share results**: `POST /file` and `POST /text` render `shareResult` (`src/index.tsx`): absolute link, a copy button (`static/result.js`, clipboard API with a textarea fallback for plain-http pages) and a QR code (`qrcode` rendered to inline SVG).
 
 ## Environment (`.env`)
 
