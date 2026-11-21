@@ -5,7 +5,10 @@ import { db } from "./db/db";
 import { files, invites, texts, users } from "./db/schema";
 import { adminAuth } from "./auth";
 import {
+    HttpError,
     defaultStorageQuota,
+    deleteAllFiles,
+    deleteAllTexts,
     formatSize,
     setSignupsRestricted,
     signupsRestricted,
@@ -161,26 +164,75 @@ adminRouter.get("/", async (c) => {
                                         {u.blockedAt ? "blocked" : "active"}
                                     </td>
                                     <td>
-                                        {u.id !== me && (
-                                            <form
-                                                action={`/admin/block/${u.id}`}
-                                                method="post"
-                                            >
-                                                <input
-                                                    type="hidden"
-                                                    name="back"
-                                                    value={new URL(c.req.url).search}
-                                                />
-                                                <button
-                                                    type="submit"
-                                                    class="btn btn-sm"
+                                        <div class="actions">
+                                            {u.id !== me && (
+                                                <form
+                                                    action={`/admin/block/${u.id}`}
+                                                    method="post"
                                                 >
-                                                    {u.blockedAt
-                                                        ? "Unblock"
-                                                        : "Block"}
-                                                </button>
-                                            </form>
-                                        )}
+                                                    <input
+                                                        type="hidden"
+                                                        name="back"
+                                                        value={
+                                                            new URL(c.req.url)
+                                                                .search
+                                                        }
+                                                    />
+                                                    <button
+                                                        type="submit"
+                                                        class="btn btn-sm"
+                                                    >
+                                                        {u.blockedAt
+                                                            ? "Unblock"
+                                                            : "Block"}
+                                                    </button>
+                                                </form>
+                                            )}
+                                            {u.uploads > 0 && (
+                                                <form
+                                                    action={`/admin/delete-all/files/${u.id}`}
+                                                    method="post"
+                                                    onsubmit="return confirm('Delete all files of this user?')"
+                                                >
+                                                    <input
+                                                        type="hidden"
+                                                        name="back"
+                                                        value={
+                                                            new URL(c.req.url)
+                                                                .search
+                                                        }
+                                                    />
+                                                    <button
+                                                        type="submit"
+                                                        class="btn btn-sm"
+                                                    >
+                                                        Delete files
+                                                    </button>
+                                                </form>
+                                            )}
+                                            {u.texts > 0 && (
+                                                <form
+                                                    action={`/admin/delete-all/texts/${u.id}`}
+                                                    method="post"
+                                                    onsubmit="return confirm('Delete all texts of this user?')"
+                                                >
+                                                    <input
+                                                        type="hidden"
+                                                        name="back"
+                                                        value={
+                                                            new URL(c.req.url)
+                                                                .search
+                                                        }
+                                                    />
+                                                    <button
+                                                        type="submit"
+                                                        class="btn btn-sm"
+                                                    >
+                                                        Delete texts
+                                                    </button>
+                                                </form>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -291,6 +343,36 @@ adminRouter.post("/quota/:id", async (c) => {
         .update(users)
         .set({ storageQuota })
         .where(eq(users.id, id));
+
+    return c.redirect(`/admin${back}`, 303);
+});
+
+adminRouter.post("/delete-all/:kind/:id", async (c) => {
+    const kind = c.req.param("kind");
+    const id = Number(c.req.param("id"));
+    const body = await c.req.parseBody();
+    const back =
+        typeof body.back === "string" && body.back.startsWith("?")
+            ? body.back
+            : "";
+
+    try {
+        if (kind === "files") await deleteAllFiles(id);
+        else if (kind === "texts") await deleteAllTexts(id);
+        else return c.notFound();
+    } catch (error) {
+        if (error instanceof HttpError) {
+            return c.render(
+                <article class="card">
+                    <h4>Could not delete</h4>
+                    <p>{error.message}, the remaining items were kept.</p>
+                    <a href={`/admin${back}`}>Back</a>
+                </article>,
+                500,
+            );
+        }
+        throw error;
+    }
 
     return c.redirect(`/admin${back}`, 303);
 });

@@ -324,6 +324,20 @@ textarea {
     box-shadow: none;
 }
 
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.actions form {
+    margin: 0;
+}
+
+.actions .btn {
+    width: 100%;
+}
+
 .pager {
     display: flex;
     align-items: center;

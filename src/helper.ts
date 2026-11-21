@@ -173,6 +173,15 @@ export async function deleteAllFiles(userId: number) {
     return rows.length;
 }
 
+export async function deleteAllTexts(userId: number) {
+    const rows = await db
+        .delete(texts)
+        .where(eq(texts.userId, userId))
+        .returning();
+
+    return rows.length;
+}
+
 export async function getFileInfo(id: string) {
     const file = await db.select().from(files).where(eq(files.url, id)).get();
 
