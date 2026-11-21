@@ -369,6 +369,12 @@ table form [type="submit"] {
     margin: 0;
 }
 
+form.inline {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0;
+}
+
 .quota {
     display: flex;
     align-items: center;

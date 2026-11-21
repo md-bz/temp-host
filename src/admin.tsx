@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "./db/db";
 import { files, invites, texts, users } from "./db/schema";
@@ -225,7 +225,19 @@ adminRouter.get("/", async (c) => {
                             <ul style="margin-top:1rem">
                                 {codes.map((code) => (
                                     <li>
-                                        <code>{code.code}</code>
+                                        <code>{code.code}</code>{" "}
+                                        <form
+                                            action={`/admin/invites/${code.id}/revoke`}
+                                            method="post"
+                                            class="inline"
+                                        >
+                                            <button
+                                                type="submit"
+                                                class="btn btn-sm"
+                                            >
+                                                Revoke
+                                            </button>
+                                        </form>
                                     </li>
                                 ))}
                             </ul>
@@ -244,6 +256,17 @@ adminRouter.post("/signups", async (c) => {
 
 adminRouter.post("/invites", async (c) => {
     await db.insert(invites).values({ code: nanoid(10) });
+    return c.redirect("/admin", 303);
+});
+
+adminRouter.post("/invites/:id/revoke", async (c) => {
+    const id = Number(c.req.param("id"));
+
+    // only unused codes: a used one keeps its usedBy history
+    await db
+        .delete(invites)
+        .where(and(eq(invites.id, id), isNull(invites.usedAt)));
+
     return c.redirect("/admin", 303);
 });
 
